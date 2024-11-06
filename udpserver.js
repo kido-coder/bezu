@@ -28,14 +28,14 @@ server.on('message', (msg, rinfo) => {
     });
 
     // Send a reply back to the sender
-    const responseMessage = 'Bayarlalraa!';
-    server.send(responseMessage, rinfo.port, rinfo.address, (error) => {
-        if (error) {
-            console.error(`Error sending response: ${error}`);
-        } else {
-            console.log(`Sent response to ${rinfo.address}:${rinfo.port}`);
-        }
-    });
+    // const responseMessage = 'Bayarlalraa!';
+    // server.send(responseMessage, rinfo.port, rinfo.address, (error) => {
+    //     if (error) {
+    //         console.error(`Error sending response: ${error}`);
+    //     } else {
+    //         console.log(`Sent response to ${rinfo.address}:${rinfo.port}`);
+    //     }
+    // });
     console.log(ipadd)
 });
 
@@ -60,7 +60,8 @@ function sendPacket() {
                 console.log(`${obj.key1} ruu Huselt ulgeesen`);
             }
         });
+    
     }
 }
 
-setInterval(sendPacket, 100);
+setInterval(sendPacket, 1000);
