@@ -7,36 +7,48 @@ const server = dgram.createSocket('udp4');
 var ipadd = [];
 
 // Handle incoming messages
-// server.on('message', (msg, rinfo) => {
-//     if (msg.includes("SICTZ")) {
-//         var node = msg.subarray(5, msg.length)
-//         var obj = {
-//             key1: node,
-//             key2: rinfo.address,
-//             key3: rinfo.port
-//         };
+server.on('message', (msg, rinfo) => {
+    if (msg.includes("SICTZ")) {
+        var node = msg.subarray(5, msg.length)
+        var obj = {
+            key1: node,
+            key2: rinfo.address,
+            key3: rinfo.port
+        };
 
-//         ipadd.push(obj)
-//     }
+        ipadd.push(obj)
+    }
 
-//     console.log(`Received message: ${msg} from ${rinfo.address}:${rinfo.port}`);
-//     const log = `Received: ${msg} from ${rinfo.address}:${rinfo.port}\n`;
-//     fs.appendFile('udp_data_log.txt', log, (err) => {
-//         if (err) {
-//             console.error('Error writing to file:', err);
-//         }
-//     });
+    console.log(`Received message: ${msg} from ${rinfo.address}:${rinfo.port}`);
+    const log = `Received: ${msg} from ${rinfo.address}:${rinfo.port}\n`;
+    fs.appendFile('udp_data_log.txt', log, (err) => {
+        if (err) {
+            console.error('Error writing to file:', err);
+        }
+    });
 
-//     // Send a reply back to the sender
-//     const responseMessage = 'Bayarlalraa!';
-//     server.send(responseMessage, rinfo.port, rinfo.address, (error) => {
-//         if (error) {
-//             console.error(`Error sending response: ${error}`);
-//         } else {
-//             console.log(`Sent response to ${rinfo.address}:${rinfo.port}`);
-//         }
-//     });
-// });
+    // Send a reply back to the sender
+    const responseMessage = 'Bayarlalraa!';
+    server.send(responseMessage, rinfo.port, rinfo.address, (error) => {
+        if (error) {
+            console.error(`Error sending response: ${error}`);
+        } else {
+            console.log(`Sent response to ${rinfo.address}:${rinfo.port}`);
+        }
+    });
+    for (i in ipadd) {
+        console.log(i.key1)
+        console.log(i.key2)
+        console.log(i.key3)
+        server.send(request, i.key2, i.key3, (error) => {
+            if (error) {
+                console.error(`Error sending response: ${error}`);
+            } else {
+                console.log(`Sent response to ${i.key2}:${i.key3}`);
+            }
+        });
+    }
+});
 
 // Handle server errors
 server.on('error', (err) => {
@@ -50,17 +62,17 @@ server.bind(PORT, HOST, () => {
 });
 
 
-function sendPacket() {
-    const request = 'data ug';
-    for (i in ipadd) {
-        server.send(request, ipadd.key2, ipadd.key3, (error) => {
-            if (error) {
-                console.error(`Error sending response: ${error}`);
-            } else {
-                console.log(`Sent response to ${ipadd.key2}:${ipadd.key3}`);
-            }
-        });
-    }
-}
+// function sendPacket() {
+//     const request = 'data ug';
+//     for (i in ipadd) {
+//         server.send(request, ipadd.key2, ipadd.key3, (error) => {
+//             if (error) {
+//                 console.error(`Error sending response: ${error}`);
+//             } else {
+//                 console.log(`Sent response to ${ipadd.key2}:${ipadd.key3}`);
+//             }
+//         });
+//     }
+// }
 
-setInterval(sendPacket, 100);
+// setInterval(sendPacket, 100);
