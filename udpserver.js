@@ -36,18 +36,7 @@ server.on('message', (msg, rinfo) => {
             console.log(`Sent response to ${rinfo.address}:${rinfo.port}`);
         }
     });
-    for (i in ipadd) {
-        console.log(i.key1)
-        console.log(i.key2)
-        console.log(i.key3)
-        server.send(request, i.key2, i.key3, (error) => {
-            if (error) {
-                console.error(`Error sending response: ${error}`);
-            } else {
-                console.log(`Sent response to ${i.key2}:${i.key3}`);
-            }
-        });
-    }
+    console.log(ipadd)
 });
 
 // Handle server errors
@@ -62,17 +51,17 @@ server.bind(PORT, HOST, () => {
 });
 
 
-// function sendPacket() {
-//     const request = 'data ug';
-//     for (i in ipadd) {
-//         server.send(request, ipadd.key2, ipadd.key3, (error) => {
-//             if (error) {
-//                 console.error(`Error sending response: ${error}`);
-//             } else {
-//                 console.log(`Sent response to ${ipadd.key2}:${ipadd.key3}`);
-//             }
-//         });
-//     }
-// }
+function sendPacket() {
+    const request = 'data ug';
+    for (i in ipadd) {
+        server.send(request, ipadd.key2, ipadd.key3, (error) => {
+            if (error) {
+                console.error(`Error sending response: ${error}`);
+            } else {
+                console.log(`Sent response to ${ipadd.key2}:${ipadd.key3}`);
+            }
+        });
+    }
+}
 
-// setInterval(sendPacket, 100);
+setInterval(sendPacket, 100);
