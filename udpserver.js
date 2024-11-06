@@ -22,8 +22,6 @@ server.on('message', (msg, rinfo) => {
             ipadd.push(obj);
         }
     }
-
-    console.log(`Received message: ${msg} from ${rinfo.address}:${rinfo.port}`);
     const log = `Received: ${msg} from ${rinfo.address}:${rinfo.port}\n`;
     fs.appendFile('udp_data_log.txt', log, (err) => {
         if (err) {
