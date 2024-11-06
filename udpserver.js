@@ -60,7 +60,9 @@ function sendPacket() {
                 console.log(`${obj.key1} ruu Huselt ulgeesen`);
             }
         });
-    
+        server.on('message', (msg, rinfo) => {
+            console.log(`Huselt hariu: ${msg}`);
+        });
     }
 }
 
