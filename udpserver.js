@@ -53,12 +53,12 @@ server.bind(PORT, HOST, () => {
 
 function sendPacket() {
     const request = 'data ug';
-    for (i in ipadd) {
-        server.send(request, ipadd.key2, ipadd.key3, (error) => {
+    for (const obj of ipadd) {
+        server.send(request, obj.key3, obj.key2, (error) => {
             if (error) {
                 console.error(`Error sending response: ${error}`);
             } else {
-                console.log(`Sent response to ${ipadd.key2}:${ipadd.key3}`);
+                console.log(`Sent response to ${obj.key2}:${obj.key3}`);
             }
         });
     }
