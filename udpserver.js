@@ -39,7 +39,6 @@ server.on('message', (msg, rinfo) => {
     console.log(ipadd)
 });
 
-// Handle server errors
 server.on('error', (err) => {
     console.error(`Server error: ${err.stack}`);
     server.close();
@@ -58,7 +57,7 @@ function sendPacket() {
             if (error) {
                 console.error(`Error sending response: ${error}`);
             } else {
-                console.log(`Sent response to ${obj.key2}:${obj.key3}`);
+                console.log(`${obj.key1} ruu Huselt ulgeesen`);
             }
         });
     }
