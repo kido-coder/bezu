@@ -16,7 +16,11 @@ server.on('message', (msg, rinfo) => {
             key3: rinfo.port
         };
 
-        ipadd.push(obj)
+        const exists = ipadd.some(item => item.key2 === obj.key2 && item.key3 === obj.key3);
+
+        if (!exists) {
+            ipadd.push(obj);
+        }
     }
 
     console.log(`Received message: ${msg} from ${rinfo.address}:${rinfo.port}`);
@@ -59,9 +63,6 @@ function sendPacket() {
             } else {
                 console.log(`${obj.key1} ruu Huselt ulgeesen`);
             }
-        });
-        server.on('message', (msg, rinfo) => {
-            console.log(`Huselt hariu: ${msg}`);
         });
     }
 }
