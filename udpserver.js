@@ -53,7 +53,7 @@ server.bind(PORT, HOST, () => {
 function sendPacket() {
     const request = 'data ug';
     for (i in ipadd) {
-        server.send(data, ipadd.key2, ipadd.key3, (error) => {
+        server.send(request, ipadd.key2, ipadd.key3, (error) => {
             if (error) {
                 console.error(`Error sending response: ${error}`);
             } else {
