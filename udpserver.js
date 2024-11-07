@@ -6,7 +6,6 @@ const HOST = '0.0.0.0';
 const server = dgram.createSocket('udp4');
 
 let waiting = -1;  // Replace useState with a simple variable
-
 let ipadd = [];
 
 // Handle incoming messages
@@ -25,8 +24,7 @@ server.on('message', (msg, rinfo) => {
         }
     }
 
-    console.log(waiting); // Now it references the simple variable correctly
-
+    
     if (rinfo.port == waiting) {
         const log = `Res: ${msg} from ${rinfo.address}:${rinfo.port}\n`;
         fs.appendFile('udp_data_log.txt', log, (err) => {
@@ -37,6 +35,7 @@ server.on('message', (msg, rinfo) => {
         console.log(log);
         waiting = -1;  // Update the variable directly
     }
+    console.log(waiting); // Now it references the simple variable correctly
 });
 
 // Error handling
