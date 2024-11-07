@@ -5,7 +5,7 @@ const PORT = 8888;
 const HOST = '0.0.0.0';
 const server = dgram.createSocket('udp4');
 
-let waiting = -1;  // Replace useState with a simple variable
+let pastReq = -1;  // Replace useState with a simple variable
 let ipadd = [];
 
 // Handle incoming messages
@@ -25,7 +25,7 @@ server.on('message', (msg, rinfo) => {
     }
 
     
-    if (rinfo.port == waiting) {
+    if (rinfo.port == pastReq) {
         const log = `Res: ${msg} from ${rinfo.address}:${rinfo.port}\n`;
         fs.appendFile('udp_data_log.txt', log, (err) => {
             if (err) {
@@ -33,9 +33,9 @@ server.on('message', (msg, rinfo) => {
             }
         });
         console.log(log);
-        waiting = -1;  // Update the variable directly
+        pastReq = -1;  // Update the variable directly
     }
-    console.log(waiting); // Now it references the simple variable correctly
+    console.log(pastReq); // Now it references the simple variable correctly
 });
 
 // Error handling
@@ -52,7 +52,7 @@ server.bind(PORT, HOST, () => {
 function sendPacket() {
     const request = 'data ug';
     for (const obj of ipadd) {
-        while (waiting !== -1) {};  // Use the variable directly
+        while (pastReq !== -1) {};  // Use the variable directly
         server.send(request, obj.port, obj.address, (error) => {
             if (error) {
                 console.error(`Error sending response: ${error}`);
@@ -60,7 +60,7 @@ function sendPacket() {
                 console.log(`${obj.name} ruu Huselt ulgeesen`);
             }
         });
-        waiting = obj.port;  // Update the variable directly
+        pastReq = obj.port;  // Update the variable directly
     }
 }
 
