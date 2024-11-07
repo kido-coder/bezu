@@ -25,20 +25,20 @@ ipadd.push(obj);
 
 // Handle incoming messages
 server.on('message', (msg, rinfo) => {
-    // if (msg.includes("SICTZ")) {
-    //     var node = msg.subarray(5, msg.length)
-    //     var obj = {
-    //         key1: node,
-    //         key2: rinfo.address,
-    //         key3: rinfo.port
-    //     };
+    if (msg.includes("SICTZ")) {
+        var node = msg.subarray(5, msg.length)
+        var obj = {
+            key1: node,
+            key2: rinfo.address,
+            key3: rinfo.port
+        };
 
-    //     const exists = ipadd.some(item => item.key2 === obj.key2 && item.key3 === obj.key3);
+        const exists = ipadd.some(item => item.key2 === obj.key2 && item.key3 === obj.key3);
 
-    //     if (!exists) {
-    //         ipadd.push(obj);
-    //     }
-    // }
+        if (!exists) {
+            ipadd.push(obj);
+        }
+    }
     const log = `Res: ${msg} from ${rinfo.address}:${rinfo.port}\n`;
     console.log(log);
 
@@ -52,6 +52,7 @@ server.on('message', (msg, rinfo) => {
         console.log(log);
         setWaiting(-1);
     }
+
     // Send a reply back to the sender
     // const responseMessage = 'Bayarlalraa!';
     // server.send(responseMessage, rinfo.port, rinfo.address, (error) => {
