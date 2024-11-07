@@ -30,9 +30,8 @@ server.on('message', (msg, rinfo) => {
             ipadd.push(obj);
         }
     }
-    const log = `Res: ${msg} from ${rinfo.address}:${rinfo.port}\n`;
-    console.log(log);
-    
+
+    console.log(waiting);
     if (rinfo.port == waiting) {
         const log = `Res: ${msg} from ${rinfo.address}:${rinfo.port}\n`;
         fs.appendFile('udp_data_log.txt', log, (err) => {
