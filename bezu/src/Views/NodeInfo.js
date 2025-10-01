@@ -80,14 +80,14 @@ const NodeInfo = () => {
                                 <abbr title="T12 - Буцах температур"><p>{lastLog[0].log_t12}°C </p></abbr>
                                 <abbr title="P12 - Буцах даралт"><p>{lastLog[0].log_p12}bar </p></abbr>
                             </div>
-                            <abbr title="P32 - Насосны даралт"><p style={{ padding: '16rem 0 0 30rem' }}>{lastLog[0].log_p32}bar</p></abbr>
+                            <abbr title="P32 - Насосны даралт"><p style={{ padding: '10rem 0 0 23rem' }}>{lastLog[0].log_p32}bar</p></abbr>
                             <h4 style={{ margin: '0' }}>ХАЛААЛТ</h4>
                             <div className="t21">
                                 <div style={{ display: 'flex' }}>
                                     <abbr title="T21 - Ирэх температур"><p style={{ paddingRight: '1rem' }}>{lastLog[0].log_t21}°C</p></abbr>
                                     <abbr title="P21 - Ирэх даралт"><p>{lastLog[0].log_p21}bar</p></abbr>
                                 </div>
-                                <div style={{ display: 'flex', paddingTop: '9.5rem' }}>
+                                <div style={{ display: 'flex', paddingTop: '5rem' }}>
                                     <abbr title="T22 - Буцах температур"><p style={{ paddingRight: '1rem' }}>{lastLog[0].log_t22}°C</p></abbr>
                                     <abbr title="P22 - Буцах даралт"><p>{lastLog[0].log_p22}bar</p></abbr>
                                 </div>
@@ -100,9 +100,9 @@ const NodeInfo = () => {
                 <div className={lastLog[0].log_us_state === 1 ? "tcv1 on" : "tcv1"}>
                     {lastLog[0].log_us_state === 1 &&
                         <div style={{ display: 'flex' }}>
-                            <abbr title="P52 - Насосны даралт"><p style={{ padding: '15rem 0 0 35rem' }}>{lastLog[0].log_p52}bar</p></abbr>
+                            <abbr title="P52 - Насосны даралт"><p style={{ padding: '11rem 0 0 30rem' }}>{lastLog[0].log_p52}bar</p></abbr>
                             <h4 style={{ margin: '1rem' }}>ХЭРЭГЛЭЭНИЙ ХАЛУУН УС</h4>
-                            <div style={{ padding: '5rem 0 0 4.5rem' }}>
+                            <div style={{ padding: '5rem 0 0 0rem' }}>
                                 <div style={{ display: 'flex' }}>
                                     <abbr title="T41 - Ирэх температур"><p style={{ paddingRight: '1rem' }}>{lastLog[0].log_t41}°C</p></abbr>
                                     <abbr title="P41 - Ирэх даралт"><p>{lastLog[0].log_p41}bar</p></abbr>

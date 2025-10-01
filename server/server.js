@@ -11,10 +11,10 @@ app.use(cors());
 app.use(cookieParser('b13n3d1pl0m11gh11jduuschaadun7ana'));
 
 const database = mysql.createConnection({
-    host: "sql210.infinityfree.com",
-    user: "if0_37066902",
-    password: "surguulishataasai",
-    database: "if0_37066902_contor"
+    host: "127.0.0.1",
+    user: "root",
+    password: "password",
+    database: "contor"
 })
 
 app.post('/admin', (req, res) => {
