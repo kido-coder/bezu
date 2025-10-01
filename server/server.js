@@ -13,7 +13,7 @@ app.use(cookieParser('b13n3d1pl0m11gh11jduuschaadun7ana'));
 const database = mysql.createConnection({
     host: "127.0.0.1",
     user: "root",
-    password: "password",
+    password: "MhtsShataasai!@#",
     database: "contor"
 })
 
