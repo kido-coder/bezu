@@ -12,7 +12,7 @@ const NodeForm = ({ show, handleClose, type, nodeID }) => {
     var action = 'fetch_single_node';
     const fetchData = async () => {
         try {
-            const response = await fetch('http://localhost:3001/operator', {
+            const response = await fetch('http://172.16.200.237:3001/operator', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action, nodeID }),
@@ -47,7 +47,7 @@ const NodeForm = ({ show, handleClose, type, nodeID }) => {
                 action = "add_node"
             else
                 action = "update_node"
-            fetch('http://localhost:3001/operator', {
+            fetch('http://172.16.200.237:3001/operator', {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action, info }),

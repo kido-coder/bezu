@@ -6,7 +6,7 @@ function Header() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const responseNodes = await fetch('http://localhost:3001/header', {
+                const responseNodes = await fetch('http://172.16.200.237:3001/header', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                 });
