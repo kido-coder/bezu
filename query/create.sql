@@ -1,4 +1,4 @@
-DROP DATABASE contor;
+DROP DATABASE IF EXISTS contor;
 
 CREATE DATABASE contor;
 

@@ -7,13 +7,16 @@ const cookieParser = require('cookie-parser');
 const app = express();
 
 app.use(express.json());
-app.use(cors());
+app.use(cors({
+    origin: 'http://183.177.106.156:3000',  // or your domain
+  credentials: true
+}));
 app.use(cookieParser('b13n3d1pl0m11gh11jduuschaadun7ana'));
 
 const database = mysql.createConnection({
     host: "127.0.0.1",
     user: "root",
-    password: "MhtsShataasai!@#",
+    password: "Mhtsshataasai!@#",
     database: "contor"
 })
 
