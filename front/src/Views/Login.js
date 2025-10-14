@@ -42,7 +42,7 @@ const Login = () => {
   return (
       <div className="background">
         <div className="loginform">
-          <img className="logo" src="/Images/logo.png" alt="Logo" />
+          <img className="logo" src="/imaged/logo.png" alt="Logo" />
           <p style={{margin:'2.5rem'}}>Хяналтын систем</p>
           <form onSubmit={handleSubmit} id="login_form">
             <input
@@ -73,7 +73,7 @@ const Login = () => {
             </button>
           </form>
         </div>
-        <img style={{ width: '55%', left: '45%' }} src="../Images/login.png" alt="chimeg2" />
+        <img style={{ width: '55%', left: '45%' }} src="../imaged/login.png" alt="chimeg2" />
       </div>
   );
 };
