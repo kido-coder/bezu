@@ -74,7 +74,7 @@ async function upsertNode(nodeId, ip, port) {
 }
 
 async function insertTransaction(nodeId, value) {
-  const sql = `INSERT INTO node_log values (log_node, log_sys_state) VALUES (?, ?)`;
+  const sql = `INSERT INTO node_log (log_node, log_sys_state) VALUES (?, ?)`;
   try {
     await db.execute(sql, [nodeId, String(value)]);
     console.log(`Inserted transaction for ${nodeId}: ${value}`);

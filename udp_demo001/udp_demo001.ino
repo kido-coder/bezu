@@ -13,7 +13,7 @@ byte mac[] = {
 // Reply dummy buffer
 // char ReplyBuffer[] = "C_#ZorigooBagshiinUruu_";
 // Registration buffer
-char FirstBuffer[] = "R_EDD_!";
+char FirstBuffer[] = "R_001_!";
 
 // Серверийн порт, ip хаяг
 unsigned int localPort = 8888;
@@ -73,7 +73,7 @@ void loop() {
     //Hariu ilgeeh (Static bish irsen hayag ruu butsaaj ilgeene)
     Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
     
-    char ReplyBuffer[] = "S_#TuruudGaihuulii_";
+    char ReplyBuffer[] = "S_001_";
     char end[] = "_!";
     char charArray[6];
     itoa(count, charArray, 10); // Convert int to char array in base 10
