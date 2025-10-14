@@ -44,7 +44,7 @@ CREATE TABLE state (
 
 CREATE TABLE node_log (
 	log_id			BIGINT			AUTO_INCREMENT		NOT NULL,
-    log_node		VARCHAR(5)		,
+    log_node		INT(5)		,
     log_date		DATETIME		,
     log_state		VARCHAR(5)		,
     log_t11			FLOAT 			,
@@ -86,7 +86,7 @@ CREATE TABLE command (
 
 CREATE TABLE star (
 	star_id		 INT AUTO_INCREMENT,
-    star_node	 VARCHAR(5)		NOT NULL,
+    star_node	 INT		    NOT NULL,
     star_ajil	 VARCHAR(7)		NOT NULL,
     
     PRIMARY KEY (star_id),
