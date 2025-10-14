@@ -22,7 +22,7 @@ const CmdLog = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch('http://localhost:3001/mid', {
+                const response = await fetch('http://172.16.200.237:3001/mid', {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action, search }),
@@ -82,7 +82,7 @@ const CmdLog = () => {
                 setMessage('');
             }, 5000);
         }
-        fetch('http://localhost:3001/mid', {
+        fetch('http://172.16.200.237:3001/mid', {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action, search }),

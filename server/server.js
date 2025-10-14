@@ -8,7 +8,7 @@ const app = express();
 
 app.use(express.json());
 app.use(cors({
-    origin: 'http://183.177.106.156:3000',  // or your domain
+    origin: 'http://172.16.200.237:3002',  // or your domain
   credentials: true
 }));
 app.use(cookieParser('b13n3d1pl0m11gh11jduuschaadun7ana'));

@@ -88,7 +88,7 @@ const Home = () => {
 
   async function fetchData() {
     try {
-      const responseNodes = await fetch('http://localhost:3001/mid', {
+      const responseNodes = await fetch('http://172.16.200.237:3001/mid', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ action, userID }),
