@@ -20,7 +20,7 @@ async function initDb() {
     host: "127.0.0.1",
     user: "root",
     password: "Mhtsshataasai!@#",
-    database: "udptest",
+    database: "contor",
   });
   console.log('Connected to MySQL');
 }
@@ -63,6 +63,7 @@ function parseSMessage(msgStr) {
 }
 
 async function upsertNode(nodeId, ip, port) {
+  nodeId = parseInt(nodeId, 16);
   const sql = `
     INSERT INTO node (node_id, node_ip, node_port)
     VALUES (?, ?, ?)
@@ -73,7 +74,7 @@ async function upsertNode(nodeId, ip, port) {
 }
 
 async function insertTransaction(nodeId, value) {
-  const sql = `INSERT INTO transaction_test (t_ner, t_num) VALUES (?, ?)`;
+  const sql = `INSERT INTO node_log values (log_node, log_sys_state) VALUES (?, ?)`;
   try {
     await db.execute(sql, [nodeId, String(value)]);
     console.log(`Inserted transaction for ${nodeId}: ${value}`);
