@@ -16,6 +16,10 @@ const faultCounts = new Map();
 let db;
 let nodes = []; 
 
+let isPaused = false;
+let pausePromise = null;
+let resumeCycle = null;
+
 async function initDb() {
   db = await mysql.createConnection({
     host: "127.0.0.1",
@@ -84,12 +88,27 @@ async function insertTransaction(nodeId, value) {
   }
 }
 
+function pauseCycle() {
+  if (isPaused) return;
+  console.log('⏸️ Pausing cycle loop...');
+  isPaused = true;
+  pausePromise = new Promise(resolve => (resumeCycle = resolve));
+}
+
+function resumeCycleLoop() {
+  if (!isPaused) return;
+  console.log('▶️ Resuming cycle loop...');
+  isPaused = false;
+  resumeCycle();
+}
+
 server.on('message', async (msgBuf, rinfo) => {
   const msgStr = msgBuf.toString('utf8').trim();
 
   // 1️⃣ Handle registration: "R_nodeid_!"
   const nodeIdFromR = parseRMessage(msgStr);
   if (nodeIdFromR) {
+    sendAndAwaitResponse(rinfo.address, rinfo.port, "X:!")
     await upsertNode(nodeIdFromR, rinfo.address, rinfo.port);
     await getNode();
     console.log(`Received registration from ${nodeIdFromR}`);
@@ -127,9 +146,9 @@ function sleep(ms) {
   return new Promise(resolve => setTimeout(resolve, ms));
 }
 
-async function sendAndAwaitResponse(ip, port) {
+async function sendAndAwaitResponse(ip, port, mes) {
   const peerKey = `${ip}:${port}`;
-  const message = Buffer.from('C_gimmedata');
+  const message = Buffer.from(mes);
 
   return new Promise((resolve) => {
     if (pending.has(peerKey)) {
@@ -162,6 +181,11 @@ async function sendAndAwaitResponse(ip, port) {
 async function cycleLoop() {
   while (true) {
     try {
+      if (isPaused) {
+        console.log('⏸️ Cycle paused, waiting...');
+        await pausePromise; // Wait until resumed
+      }
+
       if (nodes.length === 0) {
         console.log('No nodes found in DB. Waiting 30s...');
         await sleep(30 * 1000);
@@ -172,8 +196,13 @@ async function cycleLoop() {
       console.log(`Cycle start: ${nodes.length} nodes, gap = ${gap} ms`);
 
       for (const node of nodes) {
+        if (isPaused) {
+          console.log('⏸️ Cycle paused mid-loop, waiting...');
+          await pausePromise;
+        }
+
         const { ip, port, node_id } = node;
-        const res = await sendAndAwaitResponse(ip, port);
+        const res = await sendAndAwaitResponse(ip, port, 'C:!');
 
         const peerKey = `${ip}:${port}`;
         if (res.success) {
@@ -200,27 +229,35 @@ async function cycleLoop() {
   }
 }
 
-module.exports.sendUDP = function sendUDPMessage(node_id, command) {
-  switch (command) {
-    case 1 :
-      message = '1';
-      break;
-    case 2 :
-      message = '2';
-      break;
-    case 3 :
-      message = '4';
-      break;
-    case 4 :
-      message = '8';
-      break;
-  }
-  const buf = Buffer.from(message);
+module.exports.sendUDP = async function sendUDPMessage(node_id, command) {
+  try {
+    pauseCycle(); // 🔹 pause the main loop first
 
-  target = nodes.find(node => node.node_id === node_id)
-  server.send(buf, target.port, target.ip, (err) => {
-    if (err) console.error('UDP send error:', err);
-  });
+    let message = "O:";
+    switch (command) {
+      case 1: message += '1'; break;
+      case 2: message += '2'; break;
+      case 3: message += '4'; break;
+      case 4: message += '8'; break;
+    }
+    message += '!'
+    const buf = Buffer.from(message);
+    const target = nodes.find(node => node.node_id === node_id);
+
+    if (!target) {
+      resumeCycleLoop();
+      return { success: false, reason: 'node_not_found' };
+    }
+    const result = await sendAndAwaitResponse(target.ip, target.port, message);
+
+    resumeCycleLoop(); // 🔹 resume cycle after completion
+    return { success: true, result };
+
+  } catch (err) {
+    console.error('sendUDPMessage error:', err);
+    resumeCycleLoop();
+    return { success: false, error: err };
+  }
 };
 
 async function start() {
