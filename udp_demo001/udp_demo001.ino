@@ -117,14 +117,15 @@ void loop() {
     //Huleen avsan packet g zadlah
     // #define UDP_TX_PACKET_MAX_SIZE 24
 
-    Udp.read(packetBuffer, 30);
-    Serial.println("Read");
+    // Udp.read(packetBuffer, 10);
+    Udp.readBytesUntil('!', packetBuffer, 10);
     String inc = packetBuffer;
     Serial.println(inc);
+    
     //Hariu ilgeeh (Static bish irsen hayag ruu butsaaj ilgeene)
     Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
     
-    char ReplyBuffer[] = "S_002_";
+    char ReplyBuffer[] = "S_001_";
     char end[] = "_!";
     char charArray[6];
     itoa(count, charArray, 10); // Convert int to char array in base 10
@@ -149,5 +150,6 @@ void loop() {
     Udp.endPacket();
     count ++;
     Serial.println(count);
+    for(int i = 0; i < packetSize;i++) packetBuffer[i] = 0;
   }
 }
