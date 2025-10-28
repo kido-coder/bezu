@@ -166,6 +166,12 @@ const Login = () => {
               Нууц үгээ мартсан
             </button>
           </form>
+          <button
+              onClick={sendUDP}
+              type="button"
+            >
+              Нууц үгээ мартсан
+            </button>
         </div>
 
         <div className="hidden lg:block lg:w-1/2 bg-indigo-500 relative">
