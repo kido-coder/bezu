@@ -251,12 +251,12 @@ module.exports.sendUDP = async function sendUDPMessage(node_id, command) {
     const result = await sendAndAwaitResponse(target.ip, target.port, message);
 
     resumeCycleLoop(); // 🔹 resume cycle after completion
-    return { success: true, result };
+    return { success: true, result};
 
   } catch (err) {
     console.error('sendUDPMessage error:', err);
     resumeCycleLoop();
-    return { success: false, error: err };
+    return { success: false, reason: err };
   }
 };
 

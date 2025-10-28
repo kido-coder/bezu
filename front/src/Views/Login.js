@@ -34,7 +34,7 @@ const Login = () => {
         body: JSON.stringify({ node_id, command }) // Example UDP message
       });
       const data = await res.json();
-      alert(data.message || 'Sent!');
+      alert(data.message);
     } catch (err) {
       console.error(err);
       alert('Failed to send UDP');
