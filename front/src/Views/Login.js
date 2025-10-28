@@ -24,6 +24,23 @@ const Login = () => {
   const [message, setMessage] = useState('');
   const [isLoggingIn, setIsLoggingIn] = useState(false);
 
+  const sendUDP = async () => {
+    const node_id = 1;
+    const command = 3;
+    try {
+      const res = await fetch('http://172.16.200.237:3001/api/send-udp', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ node_id, command }) // Example UDP message
+      });
+      const data = await res.json();
+      alert(data.message || 'Sent!');
+    } catch (err) {
+      console.error(err);
+      alert('Failed to send UDP');
+    }
+  };
+
   const handleSubmit = (event) => {
     event.preventDefault();
     if (isLoggingIn) return;
@@ -142,6 +159,7 @@ const Login = () => {
             </button>
             
             <button
+              onClick={sendUDP}
               type="button"
               className="w-full flex justify-center py-3 px-4 text-sm font-medium text-indigo-600 hover:text-indigo-500 transition duration-150 ease-in-out"
             >

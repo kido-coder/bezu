@@ -1,3 +1,5 @@
+import { sendUDP } from 'iot_server.js';
+
 const express = require('express');
 const mysql = require('mysql');
 const cors = require('cors');
@@ -19,6 +21,19 @@ const database = mysql.createConnection({
     password: "Mhtsshataasai!@#",
     database: "contor"
 })
+
+app.post('/api/send-udp', async (req, res) => {
+  try {
+    const { node_id } = req.body.node_id;
+    const { command } = req.body.command;
+    console.log(`Frontend request -> send UDP: ${node_id}, ${command}`);
+    sendUDP(node_id, command);
+    res.json({ status: 'ok', message: 'UDP packet sent' });
+  } catch (err) {
+    console.error(err);
+    res.status(500).json({ error: err.message });
+  }
+});
 
 app.post('/admin', (req, res) => {
     var action = req.body.action;
