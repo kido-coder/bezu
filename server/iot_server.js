@@ -16,15 +16,6 @@ const faultCounts = new Map();
 let db;
 let nodes = []; 
 
-server.post('/admin', (req, res) => {
-    var action = req.body.action;
-    if (action == 'getAjiltanLavlah') {
-        var query = "SELECT * FROM ajiltan_turul";
-        database.query(query, function (err, data) {
-            res.json(data);
-        })
-    }
-})
 async function initDb() {
   db = await mysql.createConnection({
     host: "127.0.0.1",

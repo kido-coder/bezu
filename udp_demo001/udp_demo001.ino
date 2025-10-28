@@ -13,7 +13,7 @@ byte mac[] = {
 // Reply dummy buffer
 // char ReplyBuffer[] = "C_#ZorigooBagshiinUruu_";
 // Registration buffer
-char FirstBuffer[] = "R_002_!";
+char FirstBuffer[] = "R_001_!";
 
 // Серверийн порт, ip хаяг
 unsigned int localPort = 1888;
