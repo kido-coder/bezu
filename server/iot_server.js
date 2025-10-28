@@ -201,29 +201,25 @@ async function cycleLoop() {
 }
 
 module.exports.sendUDP = function sendUDPMessage(node_id, command) {
-  const client = dgram.createSocket('udp4');
-
   switch (command) {
     case 1 :
-      message = 1;
+      message = '1';
       break;
     case 2 :
-      message = 2;
+      message = '2';
       break;
     case 3 :
-      message = 4;
+      message = '4';
       break;
     case 4 :
-      message = 8;
+      message = '8';
       break;
   }
   const buf = Buffer.from(message);
 
   target = nodes.find(node => node.node_id === node_id)
-
-  client.send(buf, 0, buf.length, target.ip, target.port, (err) => {
+  server.send(buf, target.port, target.ip, (err) => {
     if (err) console.error('UDP send error:', err);
-    client.close();
   });
 };
 

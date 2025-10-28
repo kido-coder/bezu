@@ -28,7 +28,7 @@ const Login = () => {
     const node_id = 1;
     const command = 3;
     try {
-      const res = await fetch('http://172.16.200.237:3001/api/send-udp', {
+      const res = await fetch('http://172.16.200.237:3001/send-udp', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ node_id, command }) // Example UDP message
@@ -52,6 +52,7 @@ const Login = () => {
       method: 'POST',
       headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ username, password }),
+      credentials: 'include'
     })
       .then((response) => {
         setIsLoggingIn(false);

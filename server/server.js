@@ -1,17 +1,17 @@
-import { sendUDP } from 'iot_server.js';
-
-const express = require('express');
-const mysql = require('mysql');
-const cors = require('cors');
-const moment = require('moment')
-const cookieParser = require('cookie-parser');
+import { sendUDP } from './iot_server.js';
+import express from 'express';
+import mysql from 'mysql';
+import cors from 'cors';
+import moment from 'moment';
+import cookieParser from 'cookie-parser';
 
 const app = express();
 
 app.use(express.json());
 app.use(cors({
     origin: 'http://172.16.200.237:3002',  // or your domain
-  credentials: true
+  credentials: true,
+  optionsSuccessStatus: 200
 }));
 app.use(cookieParser('b13n3d1pl0m11gh11jduuschaadun7ana'));
 
@@ -22,10 +22,10 @@ const database = mysql.createConnection({
     database: "contor"
 })
 
-app.post('/api/send-udp', async (req, res) => {
+app.post('/send-udp', async (req, res) => {
+  console.log(req.body)
   try {
-    const { node_id } = req.body.node_id;
-    const { command } = req.body.command;
+    const { node_id, command } = req.body;
     console.log(`Frontend request -> send UDP: ${node_id}, ${command}`);
     sendUDP(node_id, command);
     res.json({ status: 'ok', message: 'UDP packet sent' });
