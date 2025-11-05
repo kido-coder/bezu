@@ -1,5 +1,4 @@
 // udp_server.js
-const express = require('express');
 const dgram = require('dgram');
 const mysql = require('mysql2/promise');
 
@@ -22,10 +21,10 @@ let resumeCycle = null;
 
 async function initDb() {
   db = await mysql.createConnection({
-    host: "127.0.0.1",
-    user: "root",
-    password: "Mhtsshataasai!@#",
-    database: "contor",
+    host: process.env.BE_DB_HOST,
+    user: process.env.BE_DB_USER,
+    password: process.env.BE_DB_PASS,
+    database: process.env.BE_DB_DB
   });
   console.log('Connected to MySQL');
 }
@@ -34,14 +33,15 @@ async function getNode() {
     try {
         const [rows] = await db.execute('SELECT node_id, node_ip, node_port FROM node');
 
-        // Fill/update the global nodes array
-        nodes = rows.map(r => ({
+        raw = rows.map(r => ({
             node_id: r.node_id,
             ip: r.node_ip,
-            port: Number(r.node_port)
+            port: Number(r.node_port),
+            status: r.node_status
         }));
-
-        console.log('Nodes updated:', nodes); // debug log
+        console.log('Nodes updated:', raw);
+        nodes = raw.filter(r => r.status === 'ON');
+        console.log('Filtered:', nodes);
     } catch (err) {
         console.error('Error fetching nodes:', err);
     }
@@ -70,8 +70,8 @@ function parseSMessage(msgStr) {
 async function upsertNode(nodeId, ip, port) {
   nodeId = parseInt(nodeId, 16);
   const sql = `
-    INSERT INTO node (node_id, node_ip, node_port)
-    VALUES (?, ?, ?)
+    INSERT INTO node (node_id, node_ip, node_port, node_status)
+    VALUES (?, ?, ?, 'ON')
     ON DUPLICATE KEY UPDATE node_ip = VALUES(node_ip), node_port = VALUES(node_port)
   `;
   await db.execute(sql, [nodeId, ip, String(port)]);
@@ -83,6 +83,18 @@ async function insertTransaction(nodeId, value) {
   try {
     await db.execute(sql, [nodeId, String(value)]);
     console.log(`Inserted transaction for ${nodeId}: ${value}`);
+  } catch (err) {
+    console.error('Error inserting transaction:', err);
+  }
+}
+
+async function insertOFFStatus(nodeId) {
+  const sql = `UPDATE node 
+              SET node_status = 'OFF'
+              WHERE node_id = ?;`;
+  try {
+    await db.execute(sql, [nodeId, nodeId]);
+    console.log(`Updated ${nodeId} status to OFF`);
   } catch (err) {
     console.error('Error inserting transaction:', err);
   }
@@ -105,7 +117,6 @@ function resumeCycleLoop() {
 server.on('message', async (msgBuf, rinfo) => {
   const msgStr = msgBuf.toString('utf8').trim();
 
-  // 1️⃣ Handle registration: "R_nodeid_!"
   const nodeIdFromR = parseRMessage(msgStr);
   if (nodeIdFromR) {
     sendAndAwaitResponse(rinfo.address, rinfo.port, "X:!")
@@ -216,7 +227,7 @@ async function cycleLoop() {
           faultCounts.set(peerKey, newCount);
           console.warn(`No response from ${peerKey} (${res.reason}). fault=${newCount}`);
           if (newCount >= MAX_FAULTS_BEFORE_ALERT) {
-            console.error(`Node ${peerKey} failed ${newCount} times!`);
+            insertOFFStatus(node_id)
           }
         }
 

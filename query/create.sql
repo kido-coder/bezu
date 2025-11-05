@@ -31,6 +31,7 @@ CREATE TABLE node (
     node_port       VARCHAR(8)		NOT NULL,
     node_name		VARCHAR(20),
     node_address	VARCHAR(500),
+    node_status		VARCHAR(3),
     
     PRIMARY KEY (node_id));
     
