@@ -19,12 +19,24 @@ let isPaused = false;
 let pausePromise = null;
 let resumeCycle = null;
 
+let BE_CORS_ORIGIN = 'http://localhost:3000'
+let BE_DB_HOST = '127.0.0.1'
+let BE_DB_USER = 'root'
+let BE_DB_PASS = 'Mhtsshataasai123!@$'
+let BE_DB_DB = 'contor'
+let BE_JWT_SECRET = '12a9182f9af902b6c0cebdf4dd4ff9b4745f282695567219d93c3c3f11276c0e'
+let BE_SECRET_KEY = 'MXTS^SHATAASAIF7q1xqvv1!iaL50eD5XWHzcVB3U5QRMA7VUi6EAJYJmw@'
+
 async function initDb() {
   db = await mysql.createConnection({
-    host: process.env.BE_DB_HOST,
-    user: process.env.BE_DB_USER,
-    password: process.env.BE_DB_PASS,
-    database: process.env.BE_DB_DB
+    host: BE_DB_HOST,
+    user: BE_DB_USER,
+    password: BE_DB_PASS,
+    database: BE_DB_DB
+    // host: process.env.BE_DB_HOST,
+    // user: process.env.BE_DB_USER,
+    // password: process.env.BE_DB_PASS,
+    // database: process.env.BE_DB_DB
   });
   console.log('Connected to MySQL');
 }
@@ -228,9 +240,10 @@ async function cycleLoop() {
           console.warn(`No response from ${peerKey} (${res.reason}). fault=${newCount}`);
           if (newCount >= MAX_FAULTS_BEFORE_ALERT) {
             insertOFFStatus(node_id)
+            nodes.filter(n => n.node_id !== node_id)
+            faultCounts.delete(peerKey)
           }
         }
-
         await sleep(gap);
       }
     } catch (err) {
