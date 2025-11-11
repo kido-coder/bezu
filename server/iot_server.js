@@ -43,7 +43,7 @@ async function initDb() {
 
 async function getNode() {
     try {
-        const [rows] = await db.execute('SELECT node_id, node_ip, node_port FROM node');
+        const [rows] = await db.execute('SELECT node_id, node_ip, node_port, node_status FROM node');
 
         raw = rows.map(r => ({
             node_id: r.node_id,
