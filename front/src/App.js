@@ -1,26 +1,29 @@
-import { BrowserRouter as Router, Routes, Route } from 'react-router-dom';
+import { BrowserRouter as Router, Routes, Route, Navigate } from 'react-router-dom';
 import { useState, useEffect } from 'react';
+import React, { Suspense } from 'react';
 
 import MySidebar from './Components/Sidebar';
-import Header from './Components/Header'
-import Login from './Views/Login';
-import Home from './Views/Home';
-import Log from './Views/Log';
-import Nodes from './Views/Nodes';
-import Statistic from './Views/Statistic';
-import Users from './Views/Users';
-import NodeInfo from './Views/NodeInfo'
-import PleaseLogin from './Components/PleaseLogin';
-import CmdLog from './Views/CmdLog';
-import UserInfo from './Views/UserInfo';
+import Header from './Components/Header';
 import Profile from './Views/Profile';
 import Test from './Views/Test';
 import Dictionary from './Views/Dictionary';
 import Dashboard from './Views/Dashboard';
+import useAuth from './Hooks/UseAuth';
+
+const Login = React.lazy(() => import('./Views/Login'));
+const Home = React.lazy(() => import('./Views/Home'));
+const Log = React.lazy(() => import('./Views/Log'));
+const Nodes = React.lazy(() => import('./Views/Nodes'));
+const Statistic = React.lazy(() => import('./Views/Statistic'));
+const Users = React.lazy(() => import('./Views/Users'));
+const NodeInfo = React.lazy(() => import('./Views/NodeInfo'));
+const PleaseLogin = React.lazy(() => import('./Components/PleaseLogin'));
+const CmdLog = React.lazy(() => import('./Views/CmdLog'));
+const UserInfo = React.lazy(() => import('./Views/UserInfo'));
 
 function App() {
+  const { authenticated, user, loading, setAuthenticated, setUser } = useAuth();
   const [currentPath, setCurrentPath] = useState(window.location.pathname);
-  const [authenticated, setauthenticated] = useState(null);
 
   useEffect(() => {
     const handleLocationChange = () => setCurrentPath(window.location.pathname);
@@ -28,57 +31,139 @@ function App() {
     return () => window.removeEventListener('popstate', handleLocationChange);
   }, []);
 
-  useEffect(() => {
-    const loggedInUser = localStorage.getItem("authenticated");
-    if (loggedInUser) {
-      setauthenticated(loggedInUser);
-    }
-  }, []);
+  const handleLogout = async () => {
+    await fetch(`${process.env.REACT_APP_API_URL}/logout`, {
+      method: 'POST',
+      credentials: 'include',
+    });
+    localStorage.removeItem('authToken');
+    setAuthenticated(false);
 
-  if (authenticated)
-    return (
-      <Router>
-        {currentPath !== '/' && <Header />}
-        <div id="main_window">
-          {currentPath !== '/' && <MySidebar />}
-          <Routes>
-            <Route path="/" element={<Login />} />
-            <Route path="/home" element={<Home />} />
-            <Route path="/dashboard" element={<Dashboard />} />
-            <Route path="/nodes" element={<Nodes />} />
-            <Route path="/nodeInfo/:id" element={<NodeInfo />} />
-            <Route path="/userInfo/:id" element={<UserInfo />} />
-            <Route path="/log" element={<Log />} />
-            <Route path="/statistic" element={<Statistic />} />
-            <Route path="/cmdlog" element={<CmdLog />} />
-            <Route path="/users" element={<Users />} />
-            <Route path="/profile" element={<Profile />} />
-            <Route path="/test" element={<Test />} />
-            <Route path="/dictionary" element={<Dictionary />} />
-          </Routes>
-        </div>
-      </Router>
-    );
-  else
-    return (
-      <Router>
+    setUser(null);
+    window.location.href = '/';
+  };
+
+  const ProtectedRoute = ({ children }) => {
+    if (loading) return   // ⏳ wait before deciding
+    return authenticated ? children : <Navigate to="/" />;
+  };
+
+  const Layout = ({ children }) => (
+    <>
+      {currentPath !== '/' && <Header user={user} onLogout={handleLogout} />}
+      <div id="main_window">
+        {currentPath !== '/' && <MySidebar user={user} />}
+        {children}
+      </div>
+    </>
+  );
+
+  return (
+    <Router>
+      <Suspense fallback={<div>Loading...</div>}>
         <Routes>
           <Route path="/" element={<Login />} />
-          <Route path="/home" element={<PleaseLogin />} />
-          <Route path="/dashboard" element={<PleaseLogin />} />
-          <Route path="/nodes" element={<PleaseLogin />} />
-          <Route path="/nodeInfo/:id" element={<PleaseLogin />} />
-          <Route path="/userInfo/:id" element={<PleaseLogin />} />
-          <Route path="/log" element={<PleaseLogin />} />
-          <Route path="/statistic" element={<PleaseLogin />} />
-          <Route path="/cmdlog" element={<PleaseLogin />} />
-          <Route path="/profile" element={<PleaseLogin />} />
-          <Route path="/users" element={<PleaseLogin />} />
-          <Route path="/test" element={<Test />} />
-          <Route path="/dictionary" element={<PleaseLogin />} />
+          <Route
+            path="/home"
+            element={
+              <ProtectedRoute>
+                <Layout><Home /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dashboard"
+            element={
+              <ProtectedRoute>
+                <Layout><Dashboard /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/nodes"
+            element={
+              <ProtectedRoute>
+                <Layout><Nodes /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/nodeInfo/:id"
+            element={
+              <ProtectedRoute>
+                <Layout><NodeInfo /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/userInfo/:id"
+            element={
+              <ProtectedRoute>
+                <Layout><UserInfo /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/log"
+            element={
+              <ProtectedRoute>
+                <Layout><Log /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/statistic"
+            element={
+              <ProtectedRoute>
+                <Layout><Statistic /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/cmdlog"
+            element={
+              <ProtectedRoute>
+                <Layout><CmdLog /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/users"
+            element={
+              <ProtectedRoute>
+                <Layout><Users /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/profile"
+            element={
+              <ProtectedRoute>
+                <Layout><Profile /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/test"
+            element={
+              <ProtectedRoute>
+                <Layout><Test /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route
+            path="/dictionary"
+            element={
+              <ProtectedRoute>
+                <Layout><Dictionary /></Layout>
+              </ProtectedRoute>
+            }
+          />
+          <Route path="*" element={<PleaseLogin />} />
         </Routes>
-      </Router>
-    );
+      </Suspense>
+    </Router>
+  );
 }
 
 export default App;

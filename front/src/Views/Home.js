@@ -11,13 +11,13 @@ import { ModalData } from "../Components/ModalData";
 import { InsertCmd } from '../Middleware/InsertCmd';
 import { UpdateStar } from '../Middleware/UpdateStar';
 import { ConfirmDelete } from "../Middleware/ConfirmDelete";
+import UseAuth from '../Hooks/UseAuth';
 
 const Home = () => {
   const [node, setNode] = useState([]);
-  const [userID, setUserID] = useState([]);
-  const [authenticated, setauthenticated] = useState(null);
   const [state, setState] = useState(false)
   const [clicked, setClicked] = useState([])
+  const { authenticated, user } = UseAuth();
   var action = 'fav_node';
 
   function menu(nodeID) {
@@ -54,7 +54,7 @@ const Home = () => {
           buttons: [
             {
               label: 'Тийм',
-              onClick: () => InsertCmd(type, userID, clicked),
+              onClick: () => InsertCmd(type, user, clicked),
             },
             {
               label: 'Үгүй',
@@ -66,7 +66,7 @@ const Home = () => {
   }
   const filteredModalData = React.useMemo(() => {
     var filtered = [];
-    if (userID.length > 0 && userID.includes('EN')) {
+    if (process.env.REACT_APP_T1 === localStorage.getItem('type')) {
       filtered = ModalData.filter((item) => item.cmd !== 'edit');
       filtered = filtered.filter((item) => item.cmd !== 'delete');
       return filtered;
@@ -76,22 +76,16 @@ const Home = () => {
       filtered = filtered.filter((item) => item.cmd !== 'CH02');
       return filtered;
     }
-  }, [userID]);
-
-  useEffect(() => {
-    const loggedInUser = localStorage.getItem("authenticated");
-    if (loggedInUser) {
-      setauthenticated(loggedInUser);
-      setUserID(localStorage.getItem("user"))
-    }
-  }, []);
+  });
 
   async function fetchData() {
     try {
-      const responseNodes = await fetch('http://172.16.200.237:3001/mid', {
+      const responseNodes = await fetch(`${process.env.REACT_APP_API_URL}/mid`, {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ action, userID }),
+        body: JSON.stringify({ action, user }),
+        token: localStorage.getItem('authToken'),
+        credentials: 'include'
       });
 
       const dataNodes = await responseNodes.json();
@@ -109,7 +103,7 @@ const Home = () => {
   });
 
   function setFav(nodeID) {
-    UpdateStar(nodeID, userID, false)
+    UpdateStar(nodeID, user, false)
     fetchData();
   }
 

@@ -1,6 +1,6 @@
 export async function Get (action, setData) {
     try {
-        const res = await fetch('http://172.16.200.237:3001/admin', {
+        const res = await fetch(`${process.env.REACT_APP_API_URL}/admin`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action }),

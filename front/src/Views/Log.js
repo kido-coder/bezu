@@ -20,7 +20,7 @@ const Log = () => {
 
     const fetchData = async () => {
         try {
-            const responseLog = await fetch('http://172.16.200.237:3001/mid', {
+            const responseLog = await fetch(`${process.env.REACT_APP_API_URL}/mid`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action, node, start, end }),

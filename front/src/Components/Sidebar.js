@@ -24,16 +24,16 @@ function Sidebar() {
         }
     }, [userID]);
 
-    function handleLogout() {
-        localStorage.clear()
+    const handleLogout = async () => {
+        await fetch(`${process.env.REACT_APP_API_URL}/logout`, { method: 'POST', credentials: 'include' });
+        localStorage.clear();
         window.location.pathname = '/'
-    }
+    };
 
     return (
         <div className='Sidebar'>
             <div id='userSection'>
-                <img id='profile' src="/images/user.png" alt="user" />
-                <p onClick={() => window.location.pathname='/profile'} className='link'>{userID}</p>
+                <img id="logo" src="/images/logo.png" alt="Logo" onClick={() => { window.location.pathname = '/home' }} />
             </div>
             <ul className='SidebarList'>
                 {filteredSidebarData.map((val, key) => {

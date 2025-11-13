@@ -6,13 +6,14 @@ function Header() {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const responseNodes = await fetch('http://172.16.200.237:3001/header', {
+                const responseNodes = await fetch(`${process.env.REACT_APP_API_URL}/header`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
+                    credentials: 'include', 
+                    token: localStorage.getItem('authToken')
                 });
 
                 const dataNodes = await responseNodes.json();
-                console.log(dataNodes)
                 if (JSON.stringify(data) !== JSON.stringify(dataNodes.data || [])) {
                     setData(dataNodes.data || []);
                 }
@@ -27,11 +28,8 @@ function Header() {
 
     return (
         <div id='header'>
-            <img id="logo" src="/images/logo.png" alt="Logo" onClick={() => {
-                window.location.pathname = '/home';
-            }} />
             <div id='info'>
-                {!localStorage.getItem("user").includes('AD') &&
+                {process.env.REACT_APP_T1 === localStorage.getItem("type") &&
                     <div id="headerNode">
                         <a href='/nodes'>Нийт зангилаа</a>
                         {data.length > 0 && (
@@ -39,7 +37,7 @@ function Header() {
                         )}
                     </div>
                 }
-                {!localStorage.getItem("user").includes('EN')  &&
+                {process.env.REACT_APP_T2 === localStorage.getItem("type") &&
                     <div id="headerUser">
                         <a href='/users'>Нийт хэрэглэгч</a>
                         {data.length > 1 && (

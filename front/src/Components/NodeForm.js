@@ -12,10 +12,12 @@ const NodeForm = ({ show, handleClose, type, nodeID }) => {
     var action = 'fetch_single_node';
     const fetchData = async () => {
         try {
-            const response = await fetch('http://172.16.200.237:3001/operator', {
+            const response = await fetch(`${process.env.REACT_APP_API_URL}/operator`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action, nodeID }),
+                token: localStorage.getItem('authToken'),
+                credentials: 'include'
             });
             const data = await response.json();
             setInfo(data[0]);
@@ -36,21 +38,22 @@ const NodeForm = ({ show, handleClose, type, nodeID }) => {
 
     const handleSubmit = (event) => {
         event.preventDefault();
-        if (info.node_id.length < 5 || info.node_name.length === 0 || info.node_address.length === 0 || info.node_id[0] !== '#') {
+        if (!(info.node_name?.trim()) || !(info.node_address?.trim())) {
             setMessage("Оруулсан өгөгдөл дутуу/алдаатай байна");
             setTimeout(() => {
                 setMessage('');
             }, 5000);
         } else {
-
             if (type === 'add_node')
                 action = "add_node"
             else
-                action = "update_node"
-            fetch('http://172.16.200.237:3001/operator', {
+                action = "edit_node"
+            fetch(`${process.env.REACT_APP_API_URL}/operator`, {
                 method: 'POST',
                 headers: { 'Content-Type': 'application/json' },
                 body: JSON.stringify({ action, info }),
+                token: localStorage.getItem('authToken'),
+                credentials: 'include'
             })
                 .then((response) => response.json())
                 .then((data) => {
@@ -63,7 +66,6 @@ const NodeForm = ({ show, handleClose, type, nodeID }) => {
                     console.error('Error:', error);
                     setMessage('Aлдаа гарлаа. Та дахин оролдоно уу?.');
                 });
-            setInfo({ node_id: "", node_name: "", node_address: "" })
         }
     };
 
@@ -72,7 +74,7 @@ const NodeForm = ({ show, handleClose, type, nodeID }) => {
             <section className="modal-main">
                 <form onSubmit={handleSubmit} style={{ margin: '2rem' }}>
                     <label >Зангилааны ID</label><br />
-                    <input className="inp full" type="text" id="node_id" name="node_id" value={info && info.node_id} onChange={handleChange} placeholder="Утгаа оруулна уу" /><br />
+                    <input className="inp full" type="text" id="node_id" name="node_id" value={info && info.node_id} disabled /><br />
                     <label >Зангилааны нэр</label><br />
                     <input className="inp full" type="text" id="node_name" name="node_name" value={info && info.node_name} onChange={handleChange} placeholder="Утгаа оруулна уу" /><br />
                     <label >Зангилааны хаяг</label><br />

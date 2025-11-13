@@ -10,7 +10,7 @@ const UserInfo = () => {
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const response = await fetch('http://172.16.200.237:3001/operator', {
+                const response = await fetch(`${process.env.REACT_APP_API_URL}/operator`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
                     body: JSON.stringify({ action, id }),
@@ -32,7 +32,7 @@ const UserInfo = () => {
     const handleSubmit = (event) => {
         event.preventDefault();
 
-        fetch('http://172.16.200.237:3001/operator', {
+        fetch(`${process.env.REACT_APP_API_URL}/operator`, {
             method: 'POST',
             headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify({ action: "update_user", info }),

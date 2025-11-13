@@ -14,11 +14,11 @@ import { InsertCmd } from '../Middleware/InsertCmd';
 // import { DeleteNode } from '../Middleware/DeleteNode';
 import { UpdateStar } from '../Middleware/UpdateStar';
 import { ConfirmDelete } from '../Middleware/ConfirmDelete';
+import UseAuth from '../Hooks/UseAuth';
 
 const Nodes = () => {
     const [node, setNode] = useState([]);
-    const [userID, setUserID] = useState(localStorage.getItem("user"));
-    const [authenticated, setauthenticated] = useState(null);
+    const { authenticated, user } = UseAuth();
     const [state, setState] = useState(false)
     const [clicked, setClicked] = useState([])
     const [form, setForm] = useState(false)
@@ -70,7 +70,7 @@ const Nodes = () => {
                     buttons: [
                         {
                             label: 'Тийм',
-                            onClick: () => InsertCmd(type, userID, clicked),
+                            onClick: () => InsertCmd(type, user, clicked),
                         },
                         {
                             label: 'Үгүй',
@@ -83,7 +83,7 @@ const Nodes = () => {
 
     const filteredModalData = React.useMemo(() => {
         var filtered = [];
-        if (userID.length > 0 && userID.includes('EN')) {
+        if (process.env.REACT_APP_T1 === localStorage.getItem('type')) {
             filtered = ModalData.filter((item) => item.cmd !== 'edit');
             filtered = filtered.filter((item) => item.cmd !== 'delete');
             return filtered;
@@ -93,23 +93,17 @@ const Nodes = () => {
             filtered = filtered.filter((item) => item.cmd !== 'CH02');
             return filtered;
         }
-    }, [userID]);
+    }, [user]);
 
-    useEffect(() => {
-        const loggedInUser = localStorage.getItem("authenticated");
-        if (loggedInUser) {
-            setauthenticated(loggedInUser);
-            setUserID(localStorage.getItem("user"));
-        }
-    }, []);
-
-    async function fetchData () {
+    async function fetchData() {
         try {
-          const responseNodes = await fetch('http://172.16.200.237:3001/mid', {
-            method: 'POST',
-            headers: { 'Content-Type': 'application/json' },
-            body: JSON.stringify({ action, userID }),
-          });
+            const responseNodes = await fetch(`${process.env.REACT_APP_API_URL}/mid`, {
+                method: 'POST',
+                headers: { 'Content-Type': 'application/json' },
+                body: JSON.stringify({ action, user }),
+                token: localStorage.getItem('authToken'),
+                credentials: 'include'
+            });
 
           const dataNodes = await responseNodes.json();
           if (JSON.stringify(node) !== JSON.stringify(dataNodes.data || [])) {
@@ -121,7 +115,6 @@ const Nodes = () => {
       };
     useEffect(() => {
         fetchData();
-        console.log(node)
         const intervalId = setInterval(fetchData, 5000);
         return () => clearInterval(intervalId);
     });
@@ -130,7 +123,7 @@ const Nodes = () => {
         var sta = false
         if (state == null)
             sta = true
-        UpdateStar(nodeID, userID, sta)
+        UpdateStar(nodeID, user, sta)
         fetchData();
     }
 
@@ -138,7 +131,7 @@ const Nodes = () => {
     } else {
         return (
             <div className="table-container">
-                {userID.includes('DC') &&
+                {process.env.REACT_APP_T2 === localStorage.getItem('type') &&
                     <div style={{ textAlign: 'end', marginRight: '2%' }}><button onClick={() => addNode()} className="button add">Зангилаа нэмэх</button></div>
                 }
 
