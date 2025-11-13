@@ -1,4 +1,5 @@
 // udp_server.js
+require('dotenv').config();
 const dgram = require('dgram');
 const mysql = require('mysql2/promise');
 
@@ -93,7 +94,7 @@ async function insertOFFStatus(nodeId) {
               SET node_status = 'OFF'
               WHERE node_id = ?;`;
   try {
-    await db.execute(sql, [nodeId, nodeId]);
+    await db.execute(sql, [Number(nodeId)]);
     console.log(`Updated ${nodeId} status to OFF`);
   } catch (err) {
     console.error('Error inserting transaction:', err);

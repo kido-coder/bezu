@@ -7,13 +7,13 @@ char packetBuffer[UDP_TX_PACKET_MAX_SIZE];
 
 // Бүх төхөөрөмж онцгой хаягтай байх ёстой
 byte mac[] = {
-  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xDF
+  0xDE, 0xAD, 0xBE, 0xEF, 0xFE, 0xAA
 };
 
 // Reply dummy buffer
 // char ReplyBuffer[] = "C_#ZorigooBagshiinUruu_";
 // Registration buffer
-char FirstBuffer[] = "R_001_!";
+char FirstBuffer[] = "R_004_!";
 
 // Серверийн порт, ip хаяг
 unsigned int localPort = 1888;
