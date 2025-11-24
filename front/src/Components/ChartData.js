@@ -1,4 +1,3 @@
-const url = "http://172.16.200.237:3001/mid";
 var action = "statistic";
 
 export const fetchDailyData = async (node, date) => {

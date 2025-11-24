@@ -48,16 +48,14 @@ async function getNode() {
     }
 }
 
-// Parse registration message: R_nodeid_!
 function parseRMessage(msgStr) {
   msgStr = msgStr.trim();
-  if (!msgStr.startsWith('R_') || !msgStr.endsWith('_!')) return null;
-  const inner = msgStr.slice(2, -2);
+  if (!msgStr.startsWith('R') || !msgStr.endsWith('!')) return null;
+  const inner = msgStr.slice(2, -1);
   return inner || null;
 }
 
-// Parse response message: S_nodeid_someinteger_!
-function parseSMessage(msgStr) {
+function parseAMessage(msgStr) {
   msgStr = msgStr.trim();
   if (!msgStr.startsWith('S_') || !msgStr.endsWith('_!')) return null;
   const parts = msgStr.slice(2, -2).split('_');
@@ -70,10 +68,11 @@ function parseSMessage(msgStr) {
 
 async function upsertNode(nodeId, ip, port) {
   nodeId = parseInt(nodeId, 16);
+
   const sql = `
     INSERT INTO node (node_id, node_ip, node_port, node_status)
     VALUES (?, ?, ?, 'ON')
-    ON DUPLICATE KEY UPDATE node_ip = VALUES(node_ip), node_port = VALUES(node_port)
+    ON DUPLICATE KEY UPDATE node_ip = VALUES(node_ip), node_port = VALUES(node_port), node_status = "ON";
   `;
   await db.execute(sql, [nodeId, ip, String(port)]);
   console.log(`Upserted node ${nodeId} -> ${ip}:${port}`);
@@ -127,15 +126,12 @@ server.on('message', async (msgBuf, rinfo) => {
     return;
   }
 
-  // 2️⃣ Handle data response: "S_nodeid_someinteger_!"
-  const parsed = parseSMessage(msgStr);
+  const parsed = parseAMessage(msgStr);
   if (parsed) {
     const { nodeId, value } = parsed;
 
-    // Upsert node (keep IP/port fresh)
     await upsertNode(nodeId, rinfo.address, rinfo.port);
 
-    // Match to pending request
     const peerKey = `${rinfo.address}:${rinfo.port}`;
     const pendingEntry = pending.get(peerKey);
     if (pendingEntry) {
@@ -144,7 +140,6 @@ server.on('message', async (msgBuf, rinfo) => {
       pending.delete(peerKey);
       faultCounts.set(peerKey, 0);
     } else {
-      // unsolicited "S_" message
       console.log(`Unsolicited S message from ${peerKey}: ${msgStr}`);
       await insertTransaction(nodeId, value);
     }
@@ -195,12 +190,11 @@ async function cycleLoop() {
     try {
       if (isPaused) {
         console.log('⏸️ Cycle paused, waiting...');
-        await pausePromise; // Wait until resumed
+        await pausePromise;
       }
 
       if (nodes.length === 0) {
         console.log('No nodes found in DB. Waiting 30s...');
-        await sleep(30 * 1000);
         continue;
       }
 

@@ -111,7 +111,7 @@ app.post('/login', async (req, res) => {
     res.json({
       message: 'Амжилттай нэвтэрлээ',
       token, 
-      type: Decode(user.ajiltan_turul)
+      type: Decode(user.ajiltan_turul.toString())
     });
   });
 });
@@ -221,7 +221,7 @@ app.post('/header', (req, res) => {
 })
 
 app.post('/profile', (req, res) => {
-    var id = req.body.userID
+    var id = req.body.user
     var updated = req.body.newP
     var old = req.body.old
 
@@ -246,7 +246,7 @@ app.post("/mid", function (req, res) {
     var action = req.body.action;
     // home
     if (action == 'fav_node') {
-        var id = req.body.userID;
+        var id = req.body.user;
         var query = `SELECT n.node_id, n.node_name, l.log_state, l.log_sys_state, s.state_name, l.log_us_state, l.log_hs_state, star.star_node
 		FROM (SELECT * FROM node) n
 		LEFT JOIN (SELECT nl.log_state, nl.log_sys_state, nl.log_us_state, nl.log_hs_state, nl.log_node
@@ -260,7 +260,7 @@ app.post("/mid", function (req, res) {
 		ON n.node_id = l.log_node
 		LEFT JOIN state s
 		ON l.log_state = s.state_id
-        RIGHT JOIN (SELECT * FROM star WHERE star_ajil = "${mysql.escape(id)}") star
+        RIGHT JOIN (SELECT * FROM star WHERE star_ajil = ${mysql.escape(id)}) star
         ON n.node_id = star.star_node ORDER BY n.node_id;`;
         database.query(query, function (error, data) {
             res.json({
@@ -296,7 +296,7 @@ app.post("/mid", function (req, res) {
     }
     // Profile
     if (action == 'getUser') {
-        var id = req.body.userID;
+        var id = req.body.user;
         var query = `SELECT a.ajiltan_id, a.ajiltan_ovog, a.ajiltan_ner, a.ajiltan_utas, a.ajiltan_email, t.turul_ner
         FROM (select * from ajiltan where ajiltan_id="${mysql.escape(id)}") a
         LEFT JOIN ajiltan_turul t
@@ -307,7 +307,7 @@ app.post("/mid", function (req, res) {
     }
     // nodes
     if (action == 'fetch_node') {
-        var id = req.body.userID;
+        var id = req.body.user;
         var query = `SELECT n.node_id, n.node_name, l.log_state, l.log_sys_state, s.state_name, l.log_us_state, l.log_hs_state, star.star_node
 		FROM (SELECT * FROM node) n
 		LEFT JOIN (SELECT nl.log_state, nl.log_sys_state, nl.log_us_state, nl.log_hs_state, nl.log_node
@@ -321,7 +321,7 @@ app.post("/mid", function (req, res) {
 		ON n.node_id = l.log_node
 		LEFT JOIN state s
 		ON l.log_state = s.state_id
-        LEFT JOIN (SELECT * FROM star WHERE star_ajil = "${mysql.escape(id)}") star
+        LEFT JOIN (SELECT * FROM star WHERE star_ajil = ${mysql.escape(id)}) star
         ON n.node_id = star.star_node ORDER BY star.star_node DESC;`;
         database.query(query, function (error, data) {
             res.json({
@@ -372,9 +372,10 @@ app.post("/mid", function (req, res) {
     if (action == "star") {
         var query = ""
         if (req.body.state)
-            query = `INSERT INTO star VALUES (null, "${mysql.escape(Number(req.body.node))}", ${mysql.escape(req.body.user)});`
+            query = `INSERT INTO star VALUES (null, ${mysql.escape(Number(req.body.node))}, ${mysql.escape(req.body.user)});`
         else
-            query = `DELETE FROM star WHERE star_node = "${mysql.escape(Number(req.body.node))}" AND star_ajil = ${mysql.escape(req.body.user)};`
+            query = `DELETE FROM star WHERE star_node = ${mysql.escape(Number(req.body.node))} AND star_ajil = ${mysql.escape(req.body.user)};`
+        console.log(query)
         database.query(query, function (error, data) {
             res.json({
                 message: "done"

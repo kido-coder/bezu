@@ -87,7 +87,6 @@ const Home = () => {
         token: localStorage.getItem('authToken'),
         credentials: 'include'
       });
-
       const dataNodes = await responseNodes.json();
       if (JSON.stringify(node) !== JSON.stringify(dataNodes.data || [])) {
         setNode(dataNodes.data || []);
