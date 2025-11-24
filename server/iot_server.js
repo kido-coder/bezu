@@ -117,7 +117,14 @@ server.on('message', async (msgBuf, rinfo) => {
 
   const nodeIdFromR = parseRMessage(msgStr);
   if (nodeIdFromR) {
-    sendAndAwaitResponse(rinfo.address, rinfo.port, "X:!")
+    const message = Buffer.from("X:!");
+    server.send(message, rinfo.port, rinfo.address, (err) => {
+      if (err) {
+        console.error(`Error sending X :`, err);
+      } else {
+        console.log(`Sent X`);
+      }
+    });
     await upsertNode(nodeIdFromR, rinfo.address, rinfo.port);
     await getNode();
     console.log(`Received registration from ${nodeIdFromR}`);
