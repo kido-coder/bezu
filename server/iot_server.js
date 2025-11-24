@@ -57,11 +57,11 @@ function parseRMessage(msgStr) {
 
 function parseAMessage(msgStr) {
   msgStr = msgStr.trim();
-  if (!msgStr.startsWith('S_') || !msgStr.endsWith('_!')) return null;
-  const parts = msgStr.slice(2, -2).split('_');
-  if (parts.length !== 2) return null;
-  const [nodeId, valueStr] = parts;
-  const value = parseInt(valueStr, 10);
+  if (!msgStr.startsWith('A') || !msgStr.endsWith('!')) return null;
+  // const parts = msgStr.slice(2, -2).split('_');
+  // if (parts.length !== 2) return null;
+  // const [nodeId, valueStr] = parts;
+  const value = parseInt(msgStr.slice(2, -1), 10);
   if (!nodeId || isNaN(value)) return null;
   return { nodeId, value };
 }
@@ -195,6 +195,7 @@ async function cycleLoop() {
 
       if (nodes.length === 0) {
         console.log('No nodes found in DB. Waiting 30s...');
+        await sleep(30 * 1000);
         continue;
       }
 
