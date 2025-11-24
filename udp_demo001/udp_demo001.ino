@@ -40,7 +40,7 @@ void loop() {
     Serial.println(inc);
     if (inc[0] == 'C') {
       Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-      char ReplyBuffer[] = "A:";
+      char ReplyBuffer[] = "A:00A";
       char end[] = "!";
       char charArray[6];
       itoa(count, charArray, 10); // Convert int to char array in base 10

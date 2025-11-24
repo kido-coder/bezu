@@ -58,11 +58,9 @@ function parseRMessage(msgStr) {
 function parseAMessage(msgStr) {
   msgStr = msgStr.trim();
   if (!msgStr.startsWith('A') || !msgStr.endsWith('!')) return null;
-  // const parts = msgStr.slice(2, -2).split('_');
-  // if (parts.length !== 2) return null;
-  // const [nodeId, valueStr] = parts;
-  const value = parseInt(msgStr.slice(2, -1), 10);
-  if (!nodeId || isNaN(value)) return null;
+  const nodeId = parseInt(msgStr.slice(2, 5), 10);
+  const value = parseInt(msgStr.slice(5, -1), 10);
+  if (isNaN(nodeId) || isNaN(value)) return null;
   return { nodeId, value };
 }
 
