@@ -117,6 +117,9 @@ server.on('message', async (msgBuf, rinfo) => {
 
   const nodeIdFromR = parseRMessage(msgStr);
   if (nodeIdFromR) {
+    await upsertNode(nodeIdFromR, rinfo.address, rinfo.port);
+    await getNode();
+    console.log(`Received registration from ${nodeIdFromR}`);
     const message = Buffer.from("X:!");
     server.send(message, rinfo.port, rinfo.address, (err) => {
       if (err) {
@@ -125,9 +128,6 @@ server.on('message', async (msgBuf, rinfo) => {
         console.log(`Sent X`);
       }
     });
-    await upsertNode(nodeIdFromR, rinfo.address, rinfo.port);
-    await getNode();
-    console.log(`Received registration from ${nodeIdFromR}`);
     return;
   }
 
@@ -181,10 +181,10 @@ async function sendAndAwaitResponse(ip, port, mes) {
       if (err) {
         clearTimeout(timer);
         pending.delete(peerKey);
-        console.error(`Error sending C_gimmedata to ${peerKey}:`, err);
+        console.error(`Error sending ${message} to ${peerKey}:`, err);
         resolve({ success: false, reason: 'send_error', error: err });
       } else {
-        console.log(`Sent C_gimmedata -> ${peerKey}`);
+        console.log(`Sent ${message} -> ${peerKey}`);
       }
     });
   });
@@ -254,16 +254,14 @@ module.exports.sendUDP = async function sendUDPMessage(node_id, command) {
       case 4: message += '8'; break;
     }
     message += '!'
-    const buf = Buffer.from(message);
     const target = nodes.find(node => node.node_id === node_id);
-
     if (!target) {
       resumeCycleLoop();
       return { success: false, reason: 'node_not_found' };
     }
     const result = await sendAndAwaitResponse(target.ip, target.port, message);
 
-    resumeCycleLoop(); // 🔹 resume cycle after completion
+    resumeCycleLoop();
     return { success: true, result};
 
   } catch (err) {

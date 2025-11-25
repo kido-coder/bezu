@@ -6,13 +6,13 @@
 char packetBuffer[UDP_TX_PACKET_MAX_SIZE];
 
 // Бүх төхөөрөмж онцгой хаягтай байх ёстой
-byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xF0, 0x0A};
+byte mac[] = {0xDE, 0xAD, 0xBE, 0xEF, 0xF0, 0x01};
 unsigned int localPort = 9999;
 IPAddress remote(183,177,105,156), node_ip;
 EthernetUDP Udp;
 
 // Registration buffer
-char FirstBuffer[] = "R:00A!";
+char FirstBuffer[] = "R:001!";
 int count = 0;
 
 void setup() {
@@ -40,7 +40,7 @@ void loop() {
     Serial.println(inc);
     if (inc[0] == 'C') {
       Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
-      char ReplyBuffer[] = "A:00A";
+      char ReplyBuffer[] = "A:001";
       char end[] = "!";
       char charArray[6];
       itoa(count, charArray, 10); // Convert int to char array in base 10
