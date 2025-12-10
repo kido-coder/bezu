@@ -50,6 +50,18 @@ void loop() {
       Udp.write(end);
       Udp.endPacket();
     }
+    if (inc[0] == 'O') {
+      Udp.beginPacket(Udp.remoteIP(), Udp.remotePort());
+      char ReplyBuffer[] = "A:001999";
+      char end[] = "!";
+      char charArray[6];
+      itoa(count, charArray, 10); // Convert int to char array in base 10
+
+      Udp.write(ReplyBuffer);
+      Udp.write(charArray);
+      Udp.write(end);
+      Udp.endPacket();
+    }
     count ++;
     for(int i = 0; i < packetSize;i++) packetBuffer[i] = 0;
   }

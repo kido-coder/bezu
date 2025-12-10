@@ -5,7 +5,8 @@ const mysql = require('mysql2/promise');
 
 const PORT = 8888;
 const HOST = '0.0.0.0';
-const CYCLE_MS = 5 * 1000; // 5 minutes total cycle
+// const CYCLE_MS = 3 * 60 * 1000; // 5 minutes total cycle
+const CYCLE_MS = 5 * 1000; // 5 second test cycle
 const RESPONSE_TIMEOUT_MS = 4 * 1000; // 4 seconds
 const MAX_FAULTS_BEFORE_ALERT = 3;
 
@@ -20,6 +21,7 @@ let isPaused = false;
 let pausePromise = null;
 let resumeCycle = null;
 
+// Database connection 
 async function initDb() {
   db = await mysql.createConnection({
     host: process.env.BE_DB_HOST,
@@ -30,43 +32,46 @@ async function initDb() {
   console.log('Connected to MySQL');
 }
 
+//Get node from database
 async function getNode() {
     try {
-        const [rows] = await db.execute('SELECT node_id, node_ip, node_port, node_status FROM node');
+        const [rows] = await db.execute(`SELECT node_id, node_ip, node_port FROM node WHERE node_status = 'ON';`);
 
         raw = rows.map(r => ({
             node_id: r.node_id,
             ip: r.node_ip,
-            port: Number(r.node_port),
-            status: r.node_status
+            port: Number(r.node_port)
         }));
         console.log('Nodes updated:', raw);
-        nodes = raw.filter(r => r.status === 'ON');
-        console.log('Filtered:', nodes);
     } catch (err) {
         console.error('Error fetching nodes:', err);
     }
 }
 
+//Parse Registration from node
 function parseRMessage(msgStr) {
   msgStr = msgStr.trim();
   if (!msgStr.startsWith('R') || !msgStr.endsWith('!')) return null;
+
   const inner = msgStr.slice(2, -1);
+
   return inner || null;
 }
 
+//Parse Cyclic Response (A) from node
 function parseAMessage(msgStr) {
   msgStr = msgStr.trim();
   if (!msgStr.startsWith('A') || !msgStr.endsWith('!')) return null;
+
   const nodeId = parseInt(msgStr.slice(2, 5), 10);
   const value = parseInt(msgStr.slice(5, -1), 10);
+
   if (isNaN(nodeId) || isNaN(value)) return null;
   return { nodeId, value };
 }
 
+//Insert new node into database
 async function upsertNode(nodeId, ip, port) {
-  nodeId = parseInt(nodeId, 16);
-
   const sql = `
     INSERT INTO node (node_id, node_ip, node_port, node_status)
     VALUES (?, ?, ?, 'ON')
@@ -76,6 +81,7 @@ async function upsertNode(nodeId, ip, port) {
   console.log(`Upserted node ${nodeId} -> ${ip}:${port}`);
 }
 
+//Insert new log into database
 async function insertTransaction(nodeId, value) {
   const sql = `INSERT INTO node_log (log_node, log_sys_state) VALUES (?, ?)`;
   try {
@@ -86,6 +92,7 @@ async function insertTransaction(nodeId, value) {
   }
 }
 
+//Update node status on database
 async function insertOFFStatus(nodeId) {
   const sql = `UPDATE node 
               SET node_status = 'OFF'
@@ -98,6 +105,7 @@ async function insertOFFStatus(nodeId) {
   }
 }
 
+//Pausing main cycle for user command
 function pauseCycle() {
   if (isPaused) return;
   console.log('⏸️ Pausing cycle loop...');
@@ -105,6 +113,7 @@ function pauseCycle() {
   pausePromise = new Promise(resolve => (resumeCycle = resolve));
 }
 
+//Resuming main cycle after user command
 function resumeCycleLoop() {
   if (!isPaused) return;
   console.log('▶️ Resuming cycle loop...');
@@ -112,14 +121,24 @@ function resumeCycleLoop() {
   resumeCycle();
 }
 
+//Handle incoming message
 server.on('message', async (msgBuf, rinfo) => {
   const msgStr = msgBuf.toString('utf8').trim();
 
+  //Check type of message is R
   const nodeIdFromR = parseRMessage(msgStr);
   if (nodeIdFromR) {
-    await upsertNode(nodeIdFromR, rinfo.address, rinfo.port);
-    await getNode();
-    console.log(`Received registration from ${nodeIdFromR}`);
+    nodeId = parseInt(nodeIdFromR, 16);
+    await upsertNode(nodeId, rinfo.address, rinfo.port);
+    const newNode = { node_id: nodeId,
+                      ip: rinfo.address,
+                      port: Number(rinfo.port)
+           };
+    nodes.push(newNode);
+    console.log("New Node!")
+    console.log(nodes)
+    
+    //Sending Registration Accepted packet to node
     const message = Buffer.from("X:!");
     server.send(message, rinfo.port, rinfo.address, (err) => {
       if (err) {
@@ -131,11 +150,18 @@ server.on('message', async (msgBuf, rinfo) => {
     return;
   }
 
+  //Check type of message is A
   const parsed = parseAMessage(msgStr);
   if (parsed) {
     const { nodeId, value } = parsed;
+    const newNode = { node_id: nodeId,
+                      ip: rinfo.address,
+                      port: Number(rinfo.port)
+    };
 
-    await upsertNode(nodeId, rinfo.address, rinfo.port);
+    //Tag alga bolj bgaad genet supriiz mada faka geel orj ireh nuhtsul
+    if (!nodes.includes(newNode)) 
+      await upsertNode(nodeId, rinfo.address, rinfo.port);
 
     const peerKey = `${rinfo.address}:${rinfo.port}`;
     const pendingEntry = pending.get(peerKey);
@@ -145,7 +171,7 @@ server.on('message', async (msgBuf, rinfo) => {
       pending.delete(peerKey);
       faultCounts.set(peerKey, 0);
     } else {
-      console.log(`Unsolicited S message from ${peerKey}: ${msgStr}`);
+      console.log(`Asuugaagui bhad yavuulchihiin xD ${peerKey}: ${msgStr}`);
       await insertTransaction(nodeId, value);
     }
     return;
@@ -193,11 +219,6 @@ async function sendAndAwaitResponse(ip, port, mes) {
 async function cycleLoop() {
   while (true) {
     try {
-      if (isPaused) {
-        console.log('⏸️ Cycle paused, waiting...');
-        await pausePromise;
-      }
-
       if (nodes.length === 0) {
         console.log('No nodes found in DB. Waiting 30s...');
         await sleep(30 * 1000);
@@ -208,6 +229,7 @@ async function cycleLoop() {
       console.log(`Cycle start: ${nodes.length} nodes, gap = ${gap} ms`);
 
       for (const node of nodes) {
+        const start = performance.now();
         if (isPaused) {
           console.log('⏸️ Cycle paused mid-loop, waiting...');
           await pausePromise;
@@ -215,8 +237,8 @@ async function cycleLoop() {
 
         const { ip, port, node_id } = node;
         const res = await sendAndAwaitResponse(ip, port, 'C:!');
-
         const peerKey = `${ip}:${port}`;
+
         if (res.success) {
           const { nodeId, value } = res.data;
           console.log(`Got response from ${peerKey}: node=${nodeId}, value=${value}`);
@@ -233,7 +255,10 @@ async function cycleLoop() {
             faultCounts.delete(peerKey)
           }
         }
-        await sleep(gap);
+        const end = performance.now();
+        let left = gap - (end - start);
+        if (left > 0)
+          await sleep(gap);
       }
     } catch (err) {
       console.error('Error in cycleLoop:', err);
@@ -243,31 +268,27 @@ async function cycleLoop() {
 }
 
 module.exports.sendUDP = async function sendUDPMessage(node_id, command) {
-  try {
-    pauseCycle(); // 🔹 pause the main loop first
+  if (command === 1 || command === 2 || command === 4 || command === 8) {
+    try {
+      const target = nodes.find(node => node.node_id === node_id);
+      if (!target) {
+        resumeCycleLoop();
+        return { success: false, reason: 'node_not_found' };
+      }
 
-    let message = "O:";
-    switch (command) {
-      case 1: message += '1'; break;
-      case 2: message += '2'; break;
-      case 3: message += '4'; break;
-      case 4: message += '8'; break;
-    }
-    message += '!'
-    const target = nodes.find(node => node.node_id === node_id);
-    if (!target) {
+      pauseCycle(); // 🔹 pause the main loop first
+      let message = "O:";
+      message = message + command + "!";
+      const result = await sendAndAwaitResponse(target.ip, target.port, message);
+      
       resumeCycleLoop();
-      return { success: false, reason: 'node_not_found' };
+      return { success: true, result};
+
+    } catch (err) {
+      console.error('sendUDPMessage error:', err);
+      resumeCycleLoop();
+      return { success: false, reason: err };
     }
-    const result = await sendAndAwaitResponse(target.ip, target.port, message);
-
-    resumeCycleLoop();
-    return { success: true, result};
-
-  } catch (err) {
-    console.error('sendUDPMessage error:', err);
-    resumeCycleLoop();
-    return { success: false, reason: err };
   }
 };
 

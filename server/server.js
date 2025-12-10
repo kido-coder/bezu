@@ -64,10 +64,10 @@ app.post('/send-udp', async (req, res) => {
     console.log(`Frontend request -> send UDP: ${node_id}, ${command}`);
     const result = await sendUDP(node_id, command);
     console.log(result)
-    if (result.status) {
-        res.json({ status: 'ok', message: 'UDP packet sent' });
+    if (result.success) {
+        res.json({ status: 'ok', message: result.result });
     } else {
-        res.json({ status: 'failed', message: 'UDP packet didnt sent' });
+        res.json({ status: 'failed', message: result.reason });
     }
   } catch (err) {
     console.error(err);
