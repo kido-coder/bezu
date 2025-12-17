@@ -131,12 +131,20 @@ server.on('message', async (msgBuf, rinfo) => {
   if (nodeIdFromR) {
     nodeId = parseInt(nodeIdFromR, 16);
     await upsertNode(nodeId, rinfo.address, rinfo.port);
-    const newNode = {
-      node_id: nodeId,
-      ip: rinfo.address,
-      port: Number(rinfo.port)
-    };
-    nodes.push(newNode);
+
+    const index = nodes.findIndex(n => n.node_id === 1);
+
+    if (index !== -1) {
+      nodes[index].ip = rinfo.address;
+      nodes[index].port = Number(rinfo.port);
+    } else {
+      const newNode = {
+        node_id: nodeId,
+        ip: rinfo.address,
+        port: Number(rinfo.port)
+      };
+      nodes.push(newNode);
+    }
 
     cancelled = true;
 
