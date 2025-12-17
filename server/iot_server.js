@@ -15,9 +15,10 @@ const pending = new Map(); // key = ip:port
 const faultCounts = new Map();
 
 let db;
-let nodes = []; 
+let nodes = [];
 
 let isPaused = false;
+let cancelled = false;
 let pausePromise = null;
 let resumeCycle = null;
 
@@ -34,18 +35,18 @@ async function initDb() {
 
 //Get node from database
 async function getNode() {
-    try {
-        const [rows] = await db.execute(`SELECT node_id, node_ip, node_port FROM node WHERE node_status = 'ON';`);
+  try {
+    const [rows] = await db.execute(`SELECT node_id, node_ip, node_port FROM node WHERE node_status = 'ON';`);
 
-        raw = rows.map(r => ({
-            node_id: r.node_id,
-            ip: r.node_ip,
-            port: Number(r.node_port)
-        }));
-        console.log('Nodes updated:', raw);
-    } catch (err) {
-        console.error('Error fetching nodes:', err);
-    }
+    raw = rows.map(r => ({
+      node_id: r.node_id,
+      ip: r.node_ip,
+      port: Number(r.node_port)
+    }));
+    console.log('Nodes updated:', raw);
+  } catch (err) {
+    console.error('Error fetching nodes:', err);
+  }
 }
 
 //Parse Registration from node
@@ -130,14 +131,15 @@ server.on('message', async (msgBuf, rinfo) => {
   if (nodeIdFromR) {
     nodeId = parseInt(nodeIdFromR, 16);
     await upsertNode(nodeId, rinfo.address, rinfo.port);
-    const newNode = { node_id: nodeId,
-                      ip: rinfo.address,
-                      port: Number(rinfo.port)
-           };
+    const newNode = {
+      node_id: nodeId,
+      ip: rinfo.address,
+      port: Number(rinfo.port)
+    };
     nodes.push(newNode);
-    console.log("New Node!")
-    console.log(nodes)
-    
+
+    cancelled = true;
+
     //Sending Registration Accepted packet to node
     const message = Buffer.from("X:!");
     server.send(message, rinfo.port, rinfo.address, (err) => {
@@ -154,13 +156,14 @@ server.on('message', async (msgBuf, rinfo) => {
   const parsed = parseAMessage(msgStr);
   if (parsed) {
     const { nodeId, value } = parsed;
-    const newNode = { node_id: nodeId,
-                      ip: rinfo.address,
-                      port: Number(rinfo.port)
+    const newNode = {
+      node_id: nodeId,
+      ip: rinfo.address,
+      port: Number(rinfo.port)
     };
 
     //Tag alga bolj bgaad genet supriiz mada faka geel orj ireh nuhtsul
-    if (!nodes.includes(newNode)) 
+    if (!nodes.includes(newNode))
       await upsertNode(nodeId, rinfo.address, rinfo.port);
 
     const peerKey = `${rinfo.address}:${rinfo.port}`;
@@ -180,8 +183,15 @@ server.on('message', async (msgBuf, rinfo) => {
   console.log(`Unknown message from ${rinfo.address}:${rinfo.port}: ${msgStr}`);
 });
 
-function sleep(ms) {
-  return new Promise(resolve => setTimeout(resolve, ms));
+function sleep(ms, priority) {
+  return new Promise(async resolve => {
+    const step = 10;
+    for (let i = 0; i < ms; i += step) {
+      if (cancelled && priority) return resolve("cancelled");
+      await new Promise(r => setTimeout(r, step));
+    }
+    resolve("done");
+  });
 }
 
 async function sendAndAwaitResponse(ip, port, mes) {
@@ -221,7 +231,8 @@ async function cycleLoop() {
     try {
       if (nodes.length === 0) {
         console.log('No nodes found in DB. Waiting 30s...');
-        await sleep(30 * 1000);
+        cancelled = false;
+        await sleep(30 * 1000, true);
         continue;
       }
 
@@ -258,11 +269,11 @@ async function cycleLoop() {
         const end = performance.now();
         let left = gap - (end - start);
         if (left > 0)
-          await sleep(gap);
+          await sleep(gap, false);
       }
     } catch (err) {
       console.error('Error in cycleLoop:', err);
-      await sleep(5000);
+      await sleep(5000, true);
     }
   }
 }
@@ -280,9 +291,9 @@ module.exports.sendUDP = async function sendUDPMessage(node_id, command) {
       let message = "O:";
       message = message + command + "!";
       const result = await sendAndAwaitResponse(target.ip, target.port, message);
-      
+
       resumeCycleLoop();
-      return { success: true, result};
+      return { success: true, result };
 
     } catch (err) {
       console.error('sendUDPMessage error:', err);
@@ -295,7 +306,7 @@ module.exports.sendUDP = async function sendUDPMessage(node_id, command) {
 async function start() {
   await initDb();
   await getNode();
-  
+
   server.on('error', (err) => {
     console.error('Server error:', err);
     server.close();
