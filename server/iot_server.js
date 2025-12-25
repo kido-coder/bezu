@@ -1,5 +1,8 @@
 // udp_server.js
 require('dotenv').config();
+
+const isTest = 1;
+
 const dgram = require('dgram');
 const mysql = require('mysql2/promise');
 
@@ -22,7 +25,7 @@ let cancelled = false;
 let pausePromise = null;
 let resumeCycle = null;
 
-// Database connection 
+// Database connection
 async function initDb() {
   db = await mysql.createConnection({
     host: process.env.BE_DB_HOST,
@@ -38,12 +41,12 @@ async function getNode() {
   try {
     const [rows] = await db.execute(`SELECT node_id, node_ip, node_port FROM node WHERE node_status = 'ON';`);
 
-    raw = rows.map(r => ({
+    nodes = rows.map(r => ({
       node_id: r.node_id,
       ip: r.node_ip,
       port: Number(r.node_port)
     }));
-    console.log('Nodes updated:', raw);
+    console.log('Nodes updated:', nodes);
   } catch (err) {
     console.error('Error fetching nodes:', err);
   }
@@ -95,7 +98,7 @@ async function insertTransaction(nodeId, value) {
 
 //Update node status on database
 async function insertOFFStatus(nodeId) {
-  const sql = `UPDATE node 
+  const sql = `UPDATE node
               SET node_status = 'OFF'
               WHERE node_id = ?;`;
   try {
@@ -151,69 +154,73 @@ module.exports.sendUDP = async function sendUDPMessage(node_id, command) {
 server.on('message', async (msgBuf, rinfo) => {
   const msgStr = msgBuf.toString('utf8').trim();
 
-  //Check type of message is R
-  const nodeIdFromR = parseRMessage(msgStr);
-  if (nodeIdFromR) {
-    nodeId = parseInt(nodeIdFromR, 16);
-    await upsertNode(nodeId, rinfo.address, rinfo.port);
-
-    const index = nodes.findIndex(n => n.node_id === nodeId);
-
-    if (index !== -1) {
-      nodes[index].ip = rinfo.address;
-      nodes[index].port = Number(rinfo.port);
-    } else {
+  if (!isTest) {
+    //Check type of message is A
+    const parsed = parseAMessage(msgStr);
+    if (parsed) {
+      const { nodeId, value } = parsed;
       const newNode = {
         node_id: nodeId,
         ip: rinfo.address,
         port: Number(rinfo.port)
       };
-      nodes.push(newNode);
-    }
 
-    cancelled = true;
+      //Tag alga bolj bgaad genet supriiz mada faka geel orj ireh nuhtsul
+      if (!nodes.includes(newNode))
+        await upsertNode(nodeId, rinfo.address, rinfo.port);
 
-    //Sending Registration Accepted packet to node
-    const message = Buffer.from("X:!");
-    server.send(message, rinfo.port, rinfo.address, (err) => {
-      if (err) {
-        console.error(`Error sending X :`, err);
+      const peerKey = `${rinfo.address}:${rinfo.port}`;
+      const pendingEntry = pending.get(peerKey);
+      if (pendingEntry) {
+        clearTimeout(pendingEntry.timer);
+        pendingEntry.resolve({ nodeId, value, msg: msgStr, rinfo });
+        pending.delete(peerKey);
+        faultCounts.set(peerKey, 0);
       } else {
-        console.log(`Sent X`);
+        console.log(`Asuugaagui bhad yavuulchihiin xD ${peerKey}: ${msgStr}`);
+        await insertTransaction(nodeId, value);
       }
-    });
-    return;
-  }
-
-  //Check type of message is A
-  const parsed = parseAMessage(msgStr);
-  if (parsed) {
-    const { nodeId, value } = parsed;
-    const newNode = {
-      node_id: nodeId,
-      ip: rinfo.address,
-      port: Number(rinfo.port)
-    };
-
-    //Tag alga bolj bgaad genet supriiz mada faka geel orj ireh nuhtsul
-    if (!nodes.includes(newNode))
-      await upsertNode(nodeId, rinfo.address, rinfo.port);
-
-    const peerKey = `${rinfo.address}:${rinfo.port}`;
-    const pendingEntry = pending.get(peerKey);
-    if (pendingEntry) {
-      clearTimeout(pendingEntry.timer);
-      pendingEntry.resolve({ nodeId, value, msg: msgStr, rinfo });
-      pending.delete(peerKey);
-      faultCounts.set(peerKey, 0);
+      return;
     } else {
-      console.log(`Asuugaagui bhad yavuulchihiin xD ${peerKey}: ${msgStr}`);
-      await insertTransaction(nodeId, value);
+      //Check type of message is R
+      const nodeIdFromR = parseRMessage(msgStr);
+      if (nodeIdFromR) {
+        nodeId = parseInt(nodeIdFromR, 16);
+        await upsertNode(nodeId, rinfo.address, rinfo.port);
+
+        const index = nodes.findIndex(n => n.node_id === nodeId);
+
+        if (index !== -1) {
+          nodes[index].ip = rinfo.address;
+          nodes[index].port = Number(rinfo.port);
+        } else {
+          const newNode = {
+            node_id: nodeId,
+            ip: rinfo.address,
+            port: Number(rinfo.port)
+          };
+          nodes.push(newNode);
+        }
+
+        cancelled = true;
+
+        //Sending Registration Accepted packet to node
+        const message = Buffer.from("X:!");
+        server.send(message, rinfo.port, rinfo.address, (err) => {
+          if (err) {
+            console.error(`Error sending X :`, err);
+          } else {
+            console.log(`Sent X`);
+          }
+        });
+        return;
+      }
     }
-    return;
+  } else {
+    console.log(msgStr)
   }
 
-  console.log(`Unknown message from ${rinfo.address}:${rinfo.port}: ${msgStr}`);
+  // console.log(`Unknown message from ${rinfo.address}:${rinfo.port}: ${msgStr}`);
 });
 
 function sleep(ms, priority) {
@@ -272,37 +279,51 @@ async function cycleLoop() {
       const gap = Math.max(100, Math.floor(CYCLE_MS / nodes.length));
       console.log(`Cycle start: ${nodes.length} nodes, gap = ${gap} ms`);
 
-      for (const node of nodes) {
-        const start = performance.now();
-        if (isPaused) {
-          console.log('⏸️ Cycle paused mid-loop, waiting...');
-          await pausePromise;
-        }
-
-        const { ip, port, node_id } = node;
-        const res = await sendAndAwaitResponse(ip, port, 'C:!');
-        const peerKey = `${ip}:${port}`;
-
-        if (res.success) {
-          const { nodeId, value } = res.data;
-          console.log(`Got response from ${peerKey}: node=${nodeId}, value=${value}`);
-          await insertTransaction(nodeId, value);
-          faultCounts.set(peerKey, 0);
-        } else {
-          const prev = faultCounts.get(peerKey) || 0;
-          const newCount = prev + 1;
-          faultCounts.set(peerKey, newCount);
-          console.warn(`No response from ${peerKey} (${res.reason}). fault=${newCount}`);
-          if (newCount >= MAX_FAULTS_BEFORE_ALERT) {
-            // insertOFFStatus(node_id)
-            // nodes = nodes.filter(n => n.node_id !== node_id)
-            // faultCounts.delete(peerKey)
+      if (!isTest) {
+        for (const node of nodes) {
+          const start = performance.now();
+          if (isPaused) {
+            console.log('⏸️ Cycle paused mid-loop, waiting...');
+            await pausePromise;
           }
+
+          const { ip, port, node_id } = node;
+          const res = await sendAndAwaitResponse(ip, port, 'C:!');
+          const peerKey = `${ip}:${port}`;
+
+          if (res.success) {
+            const { nodeId, value } = res.data;
+            console.log(`Got response from ${peerKey}: node=${nodeId}, value=${value}`);
+            await insertTransaction(nodeId, value);
+            faultCounts.set(peerKey, 0);
+          } else {
+            const prev = faultCounts.get(peerKey) || 0;
+            const newCount = prev + 1;
+            faultCounts.set(peerKey, newCount);
+            console.warn(`No response from ${peerKey} (${res.reason}). fault=${newCount}`);
+            if (newCount >= MAX_FAULTS_BEFORE_ALERT) {
+              insertOFFStatus(node_id)
+              nodes = nodes.filter(n => n.node_id !== node_id)
+              faultCounts.delete(peerKey)
+            }
+          }
+          const end = performance.now();
+          let left = gap - (end - start);
+          if (left > 0)
+            await sleep(gap, false);
         }
-        const end = performance.now();
-        let left = gap - (end - start);
-        if (left > 0)
-          await sleep(gap, false);
+      } else {
+        for (const node of nodes) {
+          const { ip, port, node_id } = node;
+          const message = Buffer.from('C:!');
+          server.send(message, port, ip, (err) => {
+            if (err) {
+              console.error(`Error sending ${message} to ${peerKey}:`, err);
+            } else {
+              console.log(`Sent ${message} -> ${peerKey}`);
+            }
+          });
+        }
       }
     } catch (err) {
       console.error('Error in cycleLoop:', err);
