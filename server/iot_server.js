@@ -2,6 +2,7 @@
 require('dotenv').config();
 
 const isTest = 1;
+let testCounter = 0;
 
 const dgram = require('dgram');
 const mysql = require('mysql2/promise');
@@ -52,28 +53,6 @@ async function getNode() {
   }
 }
 
-//Parse Registration from node
-function parseRMessage(msgStr) {
-  msgStr = msgStr.trim();
-  if (!msgStr.startsWith('R') || !msgStr.endsWith('!')) return null;
-
-  const inner = msgStr.slice(2, -1);
-
-  return inner || null;
-}
-
-//Parse Cyclic Response (A) from node
-function parseAMessage(msgStr) {
-  msgStr = msgStr.trim();
-  if (!msgStr.startsWith('A') || !msgStr.endsWith('!')) return null;
-
-  const nodeId = parseInt(msgStr.slice(2, 5), 10);
-  const value = parseInt(msgStr.slice(5, -1), 10);
-
-  if (isNaN(nodeId) || isNaN(value)) return null;
-  return { nodeId, value };
-}
-
 //Insert new node into database
 async function upsertNode(nodeId, ip, port) {
   const sql = `
@@ -108,6 +87,49 @@ async function insertOFFStatus(nodeId) {
     console.error('Error inserting transaction:', err);
   }
 }
+
+//Parse Registration from node
+function parseRMessage(msgStr) {
+  msgStr = msgStr.trim();
+  if (!msgStr.startsWith('R') || !msgStr.endsWith('!')) return null;
+
+  const inner = msgStr.slice(2, -1);
+
+  return inner || null;
+}
+
+function checkCRC (msgStr) {
+  let message = msgStr.slice(0, -1);
+  let crc_sum = msgStr.slice(-1);
+  crc_sum = crc_sum.charCodeAt(crc_sum);
+  
+  let sum = 0;
+  
+  for (c in message) {
+    sum = sum ^ c
+  }
+  
+  if (crc_sum === sum)
+    return true
+  else 
+    return false
+}
+
+//Parse Cyclic Response (A) from node
+function parseAMessage(msgStr) {
+  msgStr = msgStr.trim();
+  if (!msgStr.startsWith('A') || !msgStr.endsWith('!')) return null;
+
+  const nodeId = parseInt(msgStr.slice(2, 5), 16);
+  const value = msgStr.slice(5, -1);
+
+  if (isNaN(nodeId) || isNaN(value)) return null;
+  if (!checkCRC(value)) return null;
+
+  value = value.slice(-1);
+  return { nodeId, value };
+}
+
 
 //Pausing main cycle for user command
 function pauseCycle() {
@@ -218,6 +240,44 @@ server.on('message', async (msgBuf, rinfo) => {
     }
   } else {
     console.log(msgStr)
+    const nodeIdFromR = parseRMessage(msgStr);
+    if (nodeIdFromR) {
+      nodeId = parseInt(nodeIdFromR, 16);
+      await upsertNode(nodeId, rinfo.address, rinfo.port);
+
+      const index = nodes.findIndex(n => n.node_id === nodeId);
+
+      if (index !== -1) {
+        nodes[index].ip = rinfo.address;
+        nodes[index].port = Number(rinfo.port);
+      } else {
+        const newNode = {
+          node_id: nodeId,
+          ip: rinfo.address,
+          port: Number(rinfo.port)
+        };
+        nodes.push(newNode);
+      }
+
+      cancelled = true;
+
+      //Sending Registration Accepted packet to node
+      const message = Buffer.from("X:!");
+      server.send(message, rinfo.port, rinfo.address, (err) => {
+        if (err) {
+          console.error(`Error sending X :`, err);
+        } else {
+          console.log(`Sent X`);
+        }
+      });
+      return;
+    }
+
+    const parsed = parseAMessage(msgStr);
+    if (parsed) {
+      const { nodeId, value } = parsed;
+      console.log(`${nodeId} : ${value}`)
+    }
   }
 
   // console.log(`Unknown message from ${rinfo.address}:${rinfo.port}: ${msgStr}`);
@@ -323,6 +383,7 @@ async function cycleLoop() {
               console.log(`Sent ${message} -> ${peerKey}`);
             }
           });
+          await sleep(gap, false);
         }
       }
     } catch (err) {
