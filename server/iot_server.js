@@ -122,6 +122,31 @@ function resumeCycleLoop() {
   resumeCycle();
 }
 
+module.exports.sendUDP = async function sendUDPMessage(node_id, command) {
+  if (command === 1 || command === 2 || command === 4 || command === 8) {
+    try {
+      const target = nodes.find(node => node.node_id === node_id);
+      if (!target) {
+        resumeCycleLoop();
+        return { success: false, reason: 'node_not_found' };
+      }
+
+      pauseCycle(); // 🔹 pause the main loop first
+      let message = "O:";
+      message = message + command + "!";
+      const result = await sendAndAwaitResponse(target.ip, target.port, message);
+
+      resumeCycleLoop();
+      return { success: true, result };
+
+    } catch (err) {
+      console.error('sendUDPMessage error:', err);
+      resumeCycleLoop();
+      return { success: false, reason: err };
+    }
+  }
+};
+
 //Handle incoming message
 server.on('message', async (msgBuf, rinfo) => {
   const msgStr = msgBuf.toString('utf8').trim();
@@ -132,7 +157,7 @@ server.on('message', async (msgBuf, rinfo) => {
     nodeId = parseInt(nodeIdFromR, 16);
     await upsertNode(nodeId, rinfo.address, rinfo.port);
 
-    const index = nodes.findIndex(n => n.node_id === 1);
+    const index = nodes.findIndex(n => n.node_id === nodeId);
 
     if (index !== -1) {
       nodes[index].ip = rinfo.address;
@@ -269,9 +294,9 @@ async function cycleLoop() {
           faultCounts.set(peerKey, newCount);
           console.warn(`No response from ${peerKey} (${res.reason}). fault=${newCount}`);
           if (newCount >= MAX_FAULTS_BEFORE_ALERT) {
-            insertOFFStatus(node_id)
-            nodes = nodes.filter(n => n.node_id !== node_id)
-            faultCounts.delete(peerKey)
+            // insertOFFStatus(node_id)
+            // nodes = nodes.filter(n => n.node_id !== node_id)
+            // faultCounts.delete(peerKey)
           }
         }
         const end = performance.now();
@@ -285,31 +310,6 @@ async function cycleLoop() {
     }
   }
 }
-
-module.exports.sendUDP = async function sendUDPMessage(node_id, command) {
-  if (command === 1 || command === 2 || command === 4 || command === 8) {
-    try {
-      const target = nodes.find(node => node.node_id === node_id);
-      if (!target) {
-        resumeCycleLoop();
-        return { success: false, reason: 'node_not_found' };
-      }
-
-      pauseCycle(); // 🔹 pause the main loop first
-      let message = "O:";
-      message = message + command + "!";
-      const result = await sendAndAwaitResponse(target.ip, target.port, message);
-
-      resumeCycleLoop();
-      return { success: true, result };
-
-    } catch (err) {
-      console.error('sendUDPMessage error:', err);
-      resumeCycleLoop();
-      return { success: false, reason: err };
-    }
-  }
-};
 
 async function start() {
   await initDb();
