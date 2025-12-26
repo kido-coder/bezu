@@ -100,13 +100,13 @@ function parseRMessage(msgStr) {
 
 function checkCRC (msgStr) {
   let message = msgStr.slice(0, -1);
-  let crc_sum = msgStr.slice(-1);
-  crc_sum = crc_sum.charCodeAt(crc_sum);
+  let crc_sum = msgStr.slice(-2);
+  crc_sum = parseInt(crc_sum, 16);
   
   let sum = 0;
   
-  for (c in message) {
-    sum = sum ^ c
+  for (const char of message) {
+    sum ^= char
   }
   
   if (crc_sum === sum)
@@ -338,6 +338,7 @@ async function cycleLoop() {
 
       const gap = Math.max(100, Math.floor(CYCLE_MS / nodes.length));
       console.log(`Cycle start: ${nodes.length} nodes, gap = ${gap} ms`);
+      testCounter ++;
 
       if (!isTest) {
         for (const node of nodes) {
@@ -375,12 +376,18 @@ async function cycleLoop() {
       } else {
         for (const node of nodes) {
           const { ip, port, node_id } = node;
-          const message = Buffer.from('C:!');
+          let message = "";
+          if (testCounter === 9) {
+            message = Buffer.from('$#$112030!');
+            testCounter = 0;
+          } else {
+            message = Buffer.from('C:!');
+          }
           server.send(message, port, ip, (err) => {
             if (err) {
-              console.error(`Error sending ${message} to ${peerKey}:`, err);
+              console.error(`Error sending ${message} to ${node_id}:`, err);
             } else {
-              console.log(`Sent ${message} -> ${peerKey}`);
+              console.log(`Sent ${message} -> ${node_id}`);
             }
           });
           await sleep(gap, false);
