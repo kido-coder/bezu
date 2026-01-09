@@ -98,14 +98,12 @@ function parseRMessage(msgStr) {
   return inner || null;
 }
 
-function checkCRC (msgStr) {
-  let message = msgStr.slice(0, -1);
-  let crc_sum = msgStr.slice(-2);
+function checkCRC (msgStr, crc_sum) {
   crc_sum = parseInt(crc_sum, 16);
   
   let sum = 0;
   
-  for (const char of message) {
+  for (const char of msgStr) {
     sum ^= char
   }
   
@@ -115,18 +113,18 @@ function checkCRC (msgStr) {
     return false
 }
 
-//Parse Cyclic Response (A) from node
 function parseAMessage(msgStr) {
   msgStr = msgStr.trim();
   if (!msgStr.startsWith('A') || !msgStr.endsWith('!')) return null;
-
+  
+  msgStr = msgStr.slice(0, -1);
   const nodeId = parseInt(msgStr.slice(2, 5), 16);
-  const value = msgStr.slice(5, -1);
+  const value = msgStr.slice(5, -3);
+  const crc = msgStr.slice(-2);
+  
+  if (isNaN(nodeId) || value.length === 0) return null;
+  if (!checkCRC(value, crc)) return null;
 
-  if (isNaN(nodeId) || isNaN(value)) return null;
-  if (!checkCRC(value)) return null;
-
-  value = value.slice(-1);
   return { nodeId, value };
 }
 
@@ -338,7 +336,6 @@ async function cycleLoop() {
 
       const gap = Math.max(100, Math.floor(CYCLE_MS / nodes.length));
       console.log(`Cycle start: ${nodes.length} nodes, gap = ${gap} ms`);
-      testCounter ++;
 
       if (!isTest) {
         for (const node of nodes) {
@@ -376,6 +373,7 @@ async function cycleLoop() {
       } else {
         for (const node of nodes) {
           const { ip, port, node_id } = node;
+          testCounter ++;
           let message = "";
           if (testCounter === 9) {
             message = Buffer.from('$#$112030!');

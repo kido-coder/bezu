@@ -45,7 +45,8 @@ function App() {
 
   const ProtectedRoute = ({ children }) => {
     if (loading) return   // ⏳ wait before deciding
-    return authenticated ? children : <Navigate to="/" />;
+    // return authenticated ? children : <Navigate to="/" />;
+    return true ? children : <Navigate to="/" />;
   };
 
   const Layout = ({ children }) => (

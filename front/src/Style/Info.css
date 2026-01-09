@@ -1,5 +1,67 @@
-.center {
+.info {
+    height: 100%;
+    width: 100%;
+}
+
+.setting {
+    height: 100%;
+    width: 100%;
+}
+
+.panel {
+    background-color: #E6EEEE;
+    width: 80%;
+    margin: 0 10%;
+}
+
+.btn-header {
+    height: 5%;
+    width: 100%;
+}
+
+.btn-upper {
+    height: 100%;
+    width: 50%;
+}
+
+.btn-lower {
+    height: 100%;
+    width: 25%;
+}
+
+.active {
+    background-color: #FF6500;
+    color: white;
+}
+
+.setting-body {
+    height: 95%;
+    width: 100%;
+    font-family: "Arial", Helvetica, sans-serif;
+    font-size: 15px;
+    text-align: left;
+}
+
+.setting-block {
+    border: 1px solid #FF6500;
+    margin: 5px;
+    display: flex;
+    justify-content: space-around;
+    padding: 10px 20px;
     text-align: center;
+}
+
+.setting-grid {
+    width: 100%;
+    display: grid;
+    grid-template-columns: auto auto;
+    row-gap: 5px;
+    column-gap: auto;
+    align-items: center;
+}
+
+.setting-section {
+    padding: 2px 5px;
 }
 
 .node {
@@ -8,47 +70,87 @@
     text-align: center;
 }
 
-.state {
+.active-view-wrapper {
+    position: relative;
+}
+
+.overlay {
+    position: absolute;
+    inset: 0;
+    background: rgba(104, 104, 104, 0);
+    /* invisible */
+    cursor: not-allowed;
+    z-index: 10;
+}
+
+.confirm-modal {
+    position: fixed;
+    inset: 0;
+    background: rgba(0, 0, 0, 0.4);
     display: flex;
-    height: 3rem;
-    padding: 0.5rem 0.5rem 0 0.5rem;
-    border-radius: 10px;
+    align-items: center;
+    justify-content: center;
+    z-index: 20;
 }
 
-.tcv2 {
-    height: 100%;
-    background-image: url('../Images/tcv2off.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    color: rgb(34, 34, 34, .7);
-    margin-left: 15%;
+.confirm-box {
+    background: white;
+    padding: 20px;
+    border-radius: 8px;
 }
 
-.tcv2.on {
-    background-image: url('../Images/tcv2.png');
-    color: rgb(34, 34, 34, .9);
+.button {
+    width: 28.5%;
+    height: 35px;
+    padding: 0.5rem;
+    margin: 0.5rem;
+    border-radius: 5px;
+    font: 14px 'Scada', sans-serif;
+    font-weight: 400;
+    padding: 5px;
+    border: 0px;
+    justify-content: space-between;
+    display: inline;
 }
 
-.tcv1 {
-    height: 100%;
-    background-image: url('../Images/tcv1off.png');
-    background-size: contain;
-    background-repeat: no-repeat;
-    color: rgb(34, 34, 34, .7);
-    margin-left: 15%;
+.button:hover {
+    cursor: pointer;
+    background-color: #45ADA8;
 }
 
-.tcv1.on {
-    background-image: url('../Images/tcv1.png');
-    color: rgb(34, 34, 34, .9);
-}
-.t11{
-    padding: 6rem 0 0 2rem;
-}
-.t21{
-    padding: 5rem 0 0 1rem;
+.button.no {
+    background-color: #FF6680;
+    color: white;
 }
 
-abbr {
-    text-decoration: none;
+input[type="text"] {
+    width: 2rem;
+    padding: 0 5px;
+    margin: 0 5px;
+}
+input[type="checkbox"] {
+  transform: scale(1.2);
+  margin: 0 5px;
+}
+
+@media (min-width: 600px) {
+    .header {
+        grid-area: 1 / span 6;
+    }
+
+    .menu {
+        grid-area: 2 / span 1;
+    }
+
+    .content {
+        grid-area: 2 / span 4;
+    }
+
+    .facts {
+        grid-area: 2 / span 1;
+    }
+
+    .footer {
+        grid-area: 3 / span 6;
+    }
 }

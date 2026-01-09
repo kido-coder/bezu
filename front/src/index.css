@@ -46,8 +46,8 @@ p {
 
 .table-container {
   width: 100%;
+  height: inherit;
   margin: 5% 0 0 20%;
-  padding: 1rem;
   justify-content: space-around;
   align-items:end;
 }

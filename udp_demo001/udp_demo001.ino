@@ -41,9 +41,6 @@ void setup() {
 
 void loop() {
   Status[link] = Ethernet.linkStatus();
-  Serial.print(Status[link] + 48);
-  Serial.print(Status[dhcp] + 48);
-  Serial.print(Status[server] + 48);
   if (Status[link] == LinkON) {
     if (Status[dhcp]) {
       int packetSize = Udp.parsePacket();
@@ -77,6 +74,7 @@ void loop() {
           Serial.println("Sent X");
         }
       }
+      for (int i = 0; i < packetSize; i ++) packetBuffer[i] = 0;
     } else {
       if (Ethernet.begin(mac, 1000, 1000) != 0) {
         Serial.print("My IP address in loop: ");
@@ -92,5 +90,4 @@ void loop() {
     Status[server] = 0;
   }
   count ++;
-  delay (1000);
 }
