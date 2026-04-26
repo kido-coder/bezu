@@ -1,13 +1,20 @@
+/* ── Desktop header ────────────────────────────────────────────────────── */
 #header {
     background-color: #547980;
     display: flex;
-    justify-content:space-between;
+    justify-content: space-between;
     align-items: center;
     height: 5%;
+    min-height: 44px;
+    /* sits to the right of the fixed 20%-wide sidebar */
     width: 80%;
-    margin: 0 0 0 20%;
-    padding: 1rem;
+    margin-left: 20%;
+    padding: 0 1rem;
     position: fixed;
+    top: 0;
+    right: 0;
+    z-index: 90;
+    box-sizing: border-box;
 }
 
 #header p {
@@ -15,25 +22,32 @@
     margin: 0;
     color: whitesmoke;
 }
+
 #header a {
     font-size: 16px;
     margin: 0;
     text-decoration: none;
     color: whitesmoke;
 }
+
 #logo {
     height: 3rem;
 }
 
 #info {
     display: flex;
-    padding: 1rem;
+    padding: 0.5rem;
+    gap: 1rem;
 }
 
-#headerNode {
-    padding-right: 5rem;
-}
-
+#headerNode,
 #headerUser {
-    padding-right: 3rem;
+    padding-right: 2rem;
+}
+
+/* ── Mobile: header hidden behind the mobile-header bar ────────────────── */
+@media (max-width: 768px) {
+    #header {
+        display: none;   /* mobile-header in App.js takes its place */
+    }
 }

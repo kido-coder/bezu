@@ -7,59 +7,41 @@ import StarOutlineIcon from '@mui/icons-material/StarOutline';
 import StarIcon from '@mui/icons-material/Star';
 import FormatListBulletedIcon from '@mui/icons-material/FormatListBulleted';
 
-import Modal from '../Components/Modal'
+import Modal from '../Components/Modal';
 import NodeForm from '../Components/NodeForm';
 import { ModalData } from "../Components/ModalData";
 import { InsertCmd } from '../Middleware/InsertCmd';
-// import { DeleteNode } from '../Middleware/DeleteNode';
 import { UpdateStar } from '../Middleware/UpdateStar';
 import { ConfirmDelete } from '../Middleware/ConfirmDelete';
 import UseAuth from '../Hooks/UseAuth';
+import { apiPostJSON, getCurrentRole } from '../utils/api';
 
 const Nodes = () => {
     const [node, setNode] = useState([]);
-    const { authenticated, user } = UseAuth();
-    const [state, setState] = useState(false)
-    const [clicked, setClicked] = useState([])
-    const [form, setForm] = useState(false)
-    const [type, setType] = useState('edit_node')
-    var action = 'fetch_node';
+    const { user } = UseAuth();
+    const role = getCurrentRole();
+    const [state, setState] = useState(false);
+    const [clicked, setClicked] = useState(null);
+    const [form, setForm] = useState(false);
+    const [formType, setFormType] = useState('edit_node');
 
-    function addNode() {
-        setForm(true);
-        setType('add_node')
-        setClicked('blah')
-    }
-
-    function menu(nodeID) {
-        setState(true);
-        setClicked(nodeID)
-    }
-
-    function handleClose() {
-        setState(false);
-        setForm(false)
-    }
+    function addNode() { setForm(true); setFormType('add_node'); setClicked(null); }
+    function menu(id) { setState(true); setClicked(id); }
+    function handleClose() { setState(false); setForm(false); }
 
     function clickedMenu(type) {
         switch (type) {
             case "edit":
-                setForm(true)
-                setType('edit_node')
+                setForm(true);
+                setFormType('edit_node');
                 break;
             case "delete":
                 confirmAlert({
                     title: 'Баталгаажуулалт',
                     message: 'Та уг зангилааг устгахдаа итгэлтэй байна уу? Зангилааны логууд excel файлаар татагдана.',
                     buttons: [
-                        {
-                            label: 'Тийм',
-                            onClick: () => ConfirmDelete(clicked, 'node'),
-                        },
-                        {
-                            label: 'Үгүй',
-                            onClick: () => setState(false),
-                        },
+                        { label: 'Тийм', onClick: () => ConfirmDelete(clicked, 'node') },
+                        { label: 'Үгүй', onClick: () => setState(false) },
                     ],
                 });
                 break;
@@ -68,121 +50,93 @@ const Nodes = () => {
                     title: 'Баталгаажуулалт',
                     message: 'Та уг командыг илгээхдээ итгэлтэй байна уу?',
                     buttons: [
-                        {
-                            label: 'Тийм',
-                            onClick: () => InsertCmd(type, user, clicked),
-                        },
-                        {
-                            label: 'Үгүй',
-                            onClick: () => setState(false),
-                        },
+                        { label: 'Тийм', onClick: () => InsertCmd(type, user, clicked) },
+                        { label: 'Үгүй', onClick: () => setState(false) },
                     ],
                 });
         }
     }
 
+    // role 1 = Engineer: no edit/delete
     const filteredModalData = React.useMemo(() => {
-        var filtered = [];
-        if (process.env.REACT_APP_T1 === localStorage.getItem('type')) {
-            filtered = ModalData.filter((item) => item.cmd !== 'edit');
-            filtered = filtered.filter((item) => item.cmd !== 'delete');
-            return filtered;
-        } else {
-            filtered = ModalData.filter((item) => item.cmd !== 'CW01');
-            filtered = filtered.filter((item) => item.cmd !== 'CH01');
-            filtered = filtered.filter((item) => item.cmd !== 'CH02');
-            return filtered;
+        if (role === 1) {
+            return ModalData.filter(item => item.cmd !== 'edit' && item.cmd !== 'delete');
         }
-    }, [user]);
+        return ModalData.filter(item => !['CW01', 'CH01', 'CH02'].includes(item.cmd));
+    }, [role]);
 
     async function fetchData() {
-        try {
-            const responseNodes = await fetch(`${process.env.REACT_APP_API_URL}/mid`, {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ action, user }),
-                token: localStorage.getItem('authToken'),
-                credentials: 'include'
-            });
-
-          const dataNodes = await responseNodes.json();
-          if (JSON.stringify(node) !== JSON.stringify(dataNodes.data || [])) {
-            setNode(dataNodes.data || []);
-          }
-        } catch (error) {
-          console.error('Error fetching data:', error);
+        if (!user) return;
+        const data = await apiPostJSON('/mid', { action: 'fetch_node', user });
+        if (data?.data && JSON.stringify(node) !== JSON.stringify(data.data)) {
+            setNode(data.data);
         }
-      };
+    }
+
     useEffect(() => {
         fetchData();
-        const intervalId = setInterval(fetchData, 5000);
-        return () => clearInterval(intervalId);
-    });
+        const id = setInterval(fetchData, 5000);
+        return () => clearInterval(id);
+    }, [user]); // re-run when user changes, not on every render
 
-    function setFav(nodeID, state) {
-        var sta = false
-        if (state == null)
-            sta = true
-        UpdateStar(nodeID, user, sta)
+    function setFav(nodeID, starState) {
+        UpdateStar(nodeID, user, starState == null);
         fetchData();
     }
 
-    if (!authenticated) {
-    } else {
-        return (
-            <div className="table-container">
-                {process.env.REACT_APP_T2 === localStorage.getItem('type') &&
-                    <div style={{ textAlign: 'end', marginRight: '2%' }}><button onClick={() => addNode()} className="button add">Зангилаа нэмэх</button></div>
-                }
-
-                <Modal show={state} handleClose={handleClose} nodeID={clicked}>
-                    <ul style={{ margin: '0', padding: '0' }}>
-                        {filteredModalData.map((val, key) => {
-                            return (
-                                <li key={key}
-                                    onClick={() => clickedMenu(val.cmd)}
-                                    className='menuItem'>
-                                    {val.title}
-                                </li>
-                            )
-                        })}
-                    </ul>
-                </Modal>
-                <NodeForm show={form} handleClose={handleClose} type={type} nodeID={clicked}> </NodeForm>
-                <table>
-                    <thead>
-                        <tr>
-                            <th></th>
-                            <th>ID</th>
-                            <th>Нэр</th>
-                            <th>Системийн төлөв</th>
-                            <th>1-р хэлхээ</th>
-                            <th>2-р хэлхээ</th>
-                            <th>Тайлбар</th>
-                            <th></th>
+    return (
+        <div className="table-container">
+            {role === 3 && (
+                <div style={{ textAlign: 'end', marginRight: '2%' }}>
+                    <button onClick={addNode} className="button add">Зангилаа нэмэх</button>
+                </div>
+            )}
+            <Modal show={state} handleClose={handleClose} nodeID={clicked}>
+                <ul style={{ margin: '0', padding: '0' }}>
+                    {filteredModalData.map((val, key) => (
+                        <li key={key} onClick={() => clickedMenu(val.cmd)} className="menuItem">
+                            {val.title}
+                        </li>
+                    ))}
+                </ul>
+            </Modal>
+            <NodeForm show={form} handleClose={handleClose} type={formType} nodeID={clicked} />
+            <table>
+                <thead>
+                    <tr>
+                        <th></th>
+                        <th>ID</th>
+                        <th>Нэр</th>
+                        <th>Халаалт - Эргэлт</th>
+                        <th>Халаалт - Нэмэлт ус</th>
+                        <th>Халуун ус - Эргэлт</th>
+                        <th></th>
+                    </tr>
+                </thead>
+                <tbody>
+                    {node.map((val, key) => (
+                        <tr key={key}>
+                            <td onClick={() => setFav(val.node_id, val.star_node)} className="menuBtn">
+                                {val.star_node == null ? <StarOutlineIcon /> : <StarIcon />}
+                            </td>
+                            <td className="link" onClick={() => window.location.pathname = `nodeInfo/${val.node_id}`}>{val.node_id}</td>
+                            <td>{val.node_name}</td>
+                            <td style={{ color: val.log_command_hw?.[0] === '1' ? 'green' : 'black' }}>
+                                {val.log_command_hc?.[0] === '1' ? 'ON' : 'OFF'}
+                            </td>
+                            <td style={{ color: val.log_command_hw?.[0] === '1' ? 'green' : 'black' }}>
+                                {val.log_command_hw?.[0] === '1' ? 'ON' : 'OFF'}
+                            </td>
+                            <td style={{ color: val.log_command_hw?.[0] === '1' ? 'green' : 'black' }}>
+                                {val.log_command_wc?.[0] === '1' ? 'ON' : 'OFF'}
+                            </td>
+                            <td onClick={() => menu(val.node_id)} className="menuBtn"><FormatListBulletedIcon /></td>
                         </tr>
-                    </thead>
-                    <tbody>
-                        {node.length > 0 && node.map((val, key) => {
-                            return (
-                                <tr key={key}>
-                                    <td onClick={() => setFav(val.node_id, val.star_node)} className='menuBtn'>{val.star_node == null ? <StarOutlineIcon /> : <StarIcon />}</td>
-                                    <td className='link'
-                                        onClick={() => window.location.pathname = `nodeInfo/${val.node_id}`}>{val.node_id}</td>
-                                    <td>{val.node_name}</td>
-                                    <td>{val.state_name}</td>
-                                    <td>{val.log_us_state}</td>
-                                    <td>{val.log_hs_state}</td>
-                                    <td>{val.log_state}</td>
-                                    <td onClick={() => menu(val.node_id)} className='menuBtn'>{<FormatListBulletedIcon />}</td>
-                                </tr>
-                            )
-                        })}
-                    </tbody>
-                </table>
-            </div>
-        );
-    }
+                    ))}
+                </tbody>
+            </table>
+        </div>
+    );
 };
 
 export default Nodes;

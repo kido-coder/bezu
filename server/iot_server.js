@@ -1,427 +1,351 @@
-// udp_server.js
-require('dotenv').config();
+import { createServer } from 'net';
+import mysql from 'mysql2/promise';
+import dotenv from 'dotenv';
 
-const isTest = 1;
-let testCounter = 0;
+dotenv.config();
 
-const dgram = require('dgram');
-const mysql = require('mysql2/promise');
-
-const PORT = 8888;
+const PORT = 9000;
 const HOST = '0.0.0.0';
-// const CYCLE_MS = 3 * 60 * 1000; // 5 minutes total cycle
-const CYCLE_MS = 5 * 1000; // 5 second test cycle
-const RESPONSE_TIMEOUT_MS = 4 * 1000; // 4 seconds
+const CYCLE_MS = 5 * 1000;
+const RESPONSE_TIMEOUT_MS = 4 * 1000;
 const MAX_FAULTS_BEFORE_ALERT = 3;
 
-const server = dgram.createSocket('udp4');
-const pending = new Map(); // key = ip:port
+/** nodeId (number) → net.Socket */
+const sockets = new Map();
+/** nodeId (number) → { timer, resolve } */
+const pending = new Map();
 const faultCounts = new Map();
 
 let db;
 let nodes = [];
 
 let isPaused = false;
-let cancelled = false;
 let pausePromise = null;
 let resumeCycle = null;
+let cancelSleep = null;
 
-// Database connection
+// ── Database ────────────────────────────────────────────────────────────────
+
 async function initDb() {
   db = await mysql.createConnection({
     host: process.env.BE_DB_HOST,
     user: process.env.BE_DB_USER,
     password: process.env.BE_DB_PASS,
-    database: process.env.BE_DB_DB
+    database: process.env.BE_DB_DB,
   });
-  console.log('Connected to MySQL');
+  console.log('DB connected');
 }
 
-//Get node from database
 async function getNode() {
   try {
-    const [rows] = await db.execute(`SELECT node_id, node_ip, node_port FROM node WHERE node_status = 'ON';`);
-
+    const [rows] = await db.execute(
+      `SELECT node_id, node_ip, node_port FROM node WHERE node_status = 'ON'`
+    );
     nodes = rows.map(r => ({
       node_id: r.node_id,
       ip: r.node_ip,
-      port: Number(r.node_port)
+      port: Number(r.node_port),
     }));
-    console.log('Nodes updated:', nodes);
+    console.log('Nodes loaded:', nodes);
   } catch (err) {
     console.error('Error fetching nodes:', err);
   }
 }
 
-//Insert new node into database
 async function upsertNode(nodeId, ip, port) {
-  const sql = `
-    INSERT INTO node (node_id, node_ip, node_port, node_status)
-    VALUES (?, ?, ?, 'ON')
-    ON DUPLICATE KEY UPDATE node_ip = VALUES(node_ip), node_port = VALUES(node_port), node_status = "ON";
-  `;
-  await db.execute(sql, [nodeId, ip, String(port)]);
+  await db.execute(
+    `INSERT INTO node (node_id, node_ip, node_port, node_status)
+     VALUES (?, ?, ?, 'ON')
+     ON DUPLICATE KEY UPDATE node_ip = VALUES(node_ip), node_port = VALUES(node_port), node_status = 'ON'`,
+    [nodeId, ip, String(port)]
+  );
   console.log(`Upserted node ${nodeId} -> ${ip}:${port}`);
 }
 
-//Insert new log into database
 async function insertTransaction(nodeId, value) {
-  const sql = `INSERT INTO node_log (log_node, log_sys_state) VALUES (?, ?)`;
+  // Command_HC Command_HW Command_WC Pres[8] Temp[7]
+  // 111113020260251101050604000011001102025025EEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEEE
+  const Command_HC = value.substring(0, 14)
+  const Command_HW = value.substring(14, 28)
+  const Command_WC = value.substring(28, 42)
+  const sensors = value.substring(42, 87);
+
+  const now = new Date();
+
+  const formatted =
+    now.getFullYear() + '-' +
+    String(now.getMonth() + 1).padStart(2, '0') + '-' +
+    String(now.getDate()).padStart(2, '0') + ' ' +
+    String(now.getHours()).padStart(2, '0') + ':' +
+    String(now.getMinutes()).padStart(2, '0') + ':' +
+    String(now.getSeconds()).padStart(2, '0');
+  const query = `INSERT INTO node_log VALUES (null, '${nodeId}', '${formatted}', '${Command_HC}', '${Command_HW}', '${Command_WC}', '${sensors}')`;
   try {
-    await db.execute(sql, [nodeId, String(value)]);
-    console.log(`Inserted transaction for ${nodeId}: ${value}`);
+    await db.execute(
+      query
+    );
   } catch (err) {
-    console.error('Error inserting transaction:', err);
+    console.error('Error inserting log:', err);
   }
 }
 
-//Update node status on database
 async function insertOFFStatus(nodeId) {
-  const sql = `UPDATE node
-              SET node_status = 'OFF'
-              WHERE node_id = ?;`;
   try {
-    await db.execute(sql, [Number(nodeId)]);
-    console.log(`Updated ${nodeId} status to OFF`);
+    await db.execute(
+      `UPDATE node SET node_status = 'OFF' WHERE node_id = ?`,
+      [Number(nodeId)]
+    );
+    console.log(`Node ${nodeId} marked OFF`);
   } catch (err) {
-    console.error('Error inserting transaction:', err);
+    console.error('Error marking node OFF:', err);
   }
 }
 
-//Parse Registration from node
+// ── Message parsing ──────────────────────────────────────────────────────────
+
 function parseRMessage(msgStr) {
   msgStr = msgStr.trim();
   if (!msgStr.startsWith('R') || !msgStr.endsWith('!')) return null;
-
   const inner = msgStr.slice(2, -1);
-
   return inner || null;
 }
 
-function checkCRC (msgStr, crc_sum) {
-  crc_sum = parseInt(crc_sum, 16);
-  
+function checkCRC(msgStr, crc_sum) {
+  const expected = parseInt(crc_sum, 16);
   let sum = 0;
-  
   for (const char of msgStr) {
-    sum ^= char
+    sum ^= char.charCodeAt(0);
   }
-  
-  if (crc_sum === sum)
-    return true
-  else 
-    return false
+  return expected === sum;
 }
 
 function parseAMessage(msgStr) {
   msgStr = msgStr.trim();
   if (!msgStr.startsWith('A') || !msgStr.endsWith('!')) return null;
-  
   msgStr = msgStr.slice(0, -1);
   const nodeId = parseInt(msgStr.slice(2, 5), 16);
   const value = msgStr.slice(5, -3);
   const crc = msgStr.slice(-2);
-  
   if (isNaN(nodeId) || value.length === 0) return null;
   if (!checkCRC(value, crc)) return null;
-
   return { nodeId, value };
 }
 
+// ── Cycle pause/resume ───────────────────────────────────────────────────────
 
-//Pausing main cycle for user command
 function pauseCycle() {
   if (isPaused) return;
-  console.log('⏸️ Pausing cycle loop...');
   isPaused = true;
-  pausePromise = new Promise(resolve => (resumeCycle = resolve));
+  pausePromise = new Promise(resolve => { resumeCycle = resolve; });
 }
 
-//Resuming main cycle after user command
 function resumeCycleLoop() {
   if (!isPaused) return;
-  console.log('▶️ Resuming cycle loop...');
   isPaused = false;
-  resumeCycle();
+  resumeCycle?.();
 }
 
-module.exports.sendUDP = async function sendUDPMessage(node_id, command) {
-  if (command === 1 || command === 2 || command === 4 || command === 8) {
-    try {
-      const target = nodes.find(node => node.node_id === node_id);
-      if (!target) {
-        resumeCycleLoop();
-        return { success: false, reason: 'node_not_found' };
-      }
+// ── Helpers ──────────────────────────────────────────────────────────────────
 
-      pauseCycle(); // 🔹 pause the main loop first
-      let message = "O:";
-      message = message + command + "!";
-      const result = await sendAndAwaitResponse(target.ip, target.port, message);
-
-      resumeCycleLoop();
-      return { success: true, result };
-
-    } catch (err) {
-      console.error('sendUDPMessage error:', err);
-      resumeCycleLoop();
-      return { success: false, reason: err };
-    }
-  }
-};
-
-//Handle incoming message
-server.on('message', async (msgBuf, rinfo) => {
-  const msgStr = msgBuf.toString('utf8').trim();
-
-  if (!isTest) {
-    //Check type of message is A
-    const parsed = parseAMessage(msgStr);
-    if (parsed) {
-      const { nodeId, value } = parsed;
-      const newNode = {
-        node_id: nodeId,
-        ip: rinfo.address,
-        port: Number(rinfo.port)
-      };
-
-      //Tag alga bolj bgaad genet supriiz mada faka geel orj ireh nuhtsul
-      if (!nodes.includes(newNode))
-        await upsertNode(nodeId, rinfo.address, rinfo.port);
-
-      const peerKey = `${rinfo.address}:${rinfo.port}`;
-      const pendingEntry = pending.get(peerKey);
-      if (pendingEntry) {
-        clearTimeout(pendingEntry.timer);
-        pendingEntry.resolve({ nodeId, value, msg: msgStr, rinfo });
-        pending.delete(peerKey);
-        faultCounts.set(peerKey, 0);
-      } else {
-        console.log(`Asuugaagui bhad yavuulchihiin xD ${peerKey}: ${msgStr}`);
-        await insertTransaction(nodeId, value);
-      }
-      return;
-    } else {
-      //Check type of message is R
-      const nodeIdFromR = parseRMessage(msgStr);
-      if (nodeIdFromR) {
-        nodeId = parseInt(nodeIdFromR, 16);
-        await upsertNode(nodeId, rinfo.address, rinfo.port);
-
-        const index = nodes.findIndex(n => n.node_id === nodeId);
-
-        if (index !== -1) {
-          nodes[index].ip = rinfo.address;
-          nodes[index].port = Number(rinfo.port);
-        } else {
-          const newNode = {
-            node_id: nodeId,
-            ip: rinfo.address,
-            port: Number(rinfo.port)
-          };
-          nodes.push(newNode);
-        }
-
-        cancelled = true;
-
-        //Sending Registration Accepted packet to node
-        const message = Buffer.from("X:!");
-        server.send(message, rinfo.port, rinfo.address, (err) => {
-          if (err) {
-            console.error(`Error sending X :`, err);
-          } else {
-            console.log(`Sent X`);
-          }
-        });
-        return;
-      }
-    }
-  } else {
-    console.log(msgStr)
-    const nodeIdFromR = parseRMessage(msgStr);
-    if (nodeIdFromR) {
-      nodeId = parseInt(nodeIdFromR, 16);
-      await upsertNode(nodeId, rinfo.address, rinfo.port);
-
-      const index = nodes.findIndex(n => n.node_id === nodeId);
-
-      if (index !== -1) {
-        nodes[index].ip = rinfo.address;
-        nodes[index].port = Number(rinfo.port);
-      } else {
-        const newNode = {
-          node_id: nodeId,
-          ip: rinfo.address,
-          port: Number(rinfo.port)
-        };
-        nodes.push(newNode);
-      }
-
-      cancelled = true;
-
-      //Sending Registration Accepted packet to node
-      const message = Buffer.from("X:!");
-      server.send(message, rinfo.port, rinfo.address, (err) => {
-        if (err) {
-          console.error(`Error sending X :`, err);
-        } else {
-          console.log(`Sent X`);
-        }
-      });
-      return;
-    }
-
-    const parsed = parseAMessage(msgStr);
-    if (parsed) {
-      const { nodeId, value } = parsed;
-      console.log(`${nodeId} : ${value}`)
-    }
-  }
-
-  // console.log(`Unknown message from ${rinfo.address}:${rinfo.port}: ${msgStr}`);
-});
-
-function sleep(ms, priority) {
-  return new Promise(async resolve => {
-    const step = 10;
-    for (let i = 0; i < ms; i += step) {
-      if (cancelled && priority) return resolve("cancelled");
-      await new Promise(r => setTimeout(r, step));
-    }
-    resolve("done");
+function sleep(ms) {
+  return new Promise(resolve => {
+    const timer = setTimeout(() => resolve('done'), ms);
+    cancelSleep = () => {
+      clearTimeout(timer);
+      resolve('cancelled');
+    };
   });
 }
 
-async function sendAndAwaitResponse(ip, port, mes) {
-  const peerKey = `${ip}:${port}`;
-  const message = Buffer.from(mes);
-
-  return new Promise((resolve) => {
-    if (pending.has(peerKey)) {
-      return resolve({ success: false, reason: 'busy' });
-    }
+function sendAndAwaitResponse(nodeId, socket, message) {
+  return new Promise(resolve => {
+    if (pending.has(nodeId)) return resolve({ success: false, reason: 'busy' });
 
     const timer = setTimeout(() => {
-      pending.delete(peerKey);
+      pending.delete(nodeId);
       resolve({ success: false, reason: 'timeout' });
     }, RESPONSE_TIMEOUT_MS);
 
-    pending.set(peerKey, {
+    pending.set(nodeId, {
       timer,
-      resolve: (data) => resolve({ success: true, data }),
+      resolve: data => resolve({ success: true, data }),
     });
 
-    server.send(message, port, ip, (err) => {
+    socket.write(message, 'utf8', err => {
       if (err) {
         clearTimeout(timer);
-        pending.delete(peerKey);
-        console.error(`Error sending ${message} to ${peerKey}:`, err);
-        resolve({ success: false, reason: 'send_error', error: err });
-      } else {
-        console.log(`Sent ${message} -> ${peerKey}`);
+        pending.delete(nodeId);
+        resolve({ success: false, reason: 'send_error' });
       }
     });
   });
 }
+
+// ── Public API (used by server.js) ───────────────────────────────────────────
+
+export async function sendTCP(node_id, command) {
+  const id = Number(node_id);
+  const socket = sockets.get(id);
+  if (!socket || socket.destroyed) return { success: false, reason: 'node_not_found' };
+
+  pauseCycle();
+  return new Promise(resolve => {
+    // socket.write(`O:${command}!`, 'utf8', err => {
+    socket.write(`${command}!`, 'utf8', err => {
+      resumeCycleLoop();
+      if (err) return resolve({ success: false, reason: 'send_error' });
+      resolve({ success: true, result: 'Амжилттай илгээлээ' });
+    });
+  });
+}
+
+// ── Message handler ──────────────────────────────────────────────────────────
+
+async function handleMessage(msgStr, socket, onRegister) {
+  const rId = parseRMessage(msgStr);
+  if (rId !== null) {
+    const id = parseInt(rId, 16);
+    onRegister(id);
+    await upsertNode(id, socket.remoteAddress, socket.remotePort);
+    sockets.set(id, socket);
+
+    const idx = nodes.findIndex(n => n.node_id === id);
+    if (idx !== -1) {
+      nodes[idx].ip = socket.remoteAddress;
+      nodes[idx].port = socket.remotePort;
+    } else {
+      nodes.push({ node_id: id, ip: socket.remoteAddress, port: socket.remotePort });
+    }
+
+    socket.write('X:!', 'utf8');
+    cancelSleep?.();
+    console.log(`Node ${id} registered from ${socket.remoteAddress}`);
+    return;
+  }
+
+  const parsed = parseAMessage(msgStr);
+  if (parsed) {
+    const { nodeId, value } = parsed;
+    const entry = pending.get(nodeId);
+    if (entry) {
+      clearTimeout(entry.timer);
+      entry.resolve({ nodeId, value });
+      pending.delete(nodeId);
+      faultCounts.set(nodeId, 0);
+    } else {
+      await insertTransaction(nodeId, value);
+    }
+  }
+}
+
+// ── TCP server ───────────────────────────────────────────────────────────────
+
+const tcpServer = createServer(socket => {
+  let nodeId = null;
+  let buf = '';
+
+  socket.on('data', async chunk => {
+    buf += chunk.toString('utf8');
+    let idx;
+    while ((idx = buf.indexOf('!')) !== -1) {
+      const msg = buf.slice(0, idx + 1).trim();
+      buf = buf.slice(idx + 1);
+      if (msg) await handleMessage(msg, socket, id => { nodeId = id; });
+    }
+  });
+
+  socket.on('close', () => {
+    if (nodeId !== null) {
+      sockets.delete(nodeId);
+      nodes = nodes.filter(n => n.node_id !== nodeId);
+      insertOFFStatus(nodeId).catch(() => { });
+      console.log(`Node ${nodeId} disconnected`);
+    }
+  });
+
+  socket.on('error', err => {
+    console.error(`Socket error (node ${nodeId ?? 'unregistered'}):`, err.message);
+  });
+});
+
+// ── Cycle loop ───────────────────────────────────────────────────────────────
 
 async function cycleLoop() {
   while (true) {
     try {
       if (nodes.length === 0) {
-        console.log('No nodes found in DB. Waiting 30s...');
-        cancelled = false;
-        await sleep(30 * 1000, true);
+        console.log('No active nodes, waiting 30s...');
+        await sleep(30 * 1000);
         continue;
       }
 
       const gap = Math.max(100, Math.floor(CYCLE_MS / nodes.length));
-      console.log(`Cycle start: ${nodes.length} nodes, gap = ${gap} ms`);
+      console.log(`Cycle: ${nodes.length} node(s), gap=${gap}ms`);
 
-      if (!isTest) {
-        for (const node of nodes) {
-          const start = performance.now();
-          if (isPaused) {
-            console.log('⏸️ Cycle paused mid-loop, waiting...');
-            await pausePromise;
-          }
-
-          const { ip, port, node_id } = node;
-          const res = await sendAndAwaitResponse(ip, port, 'C:!');
-          const peerKey = `${ip}:${port}`;
-
-          if (res.success) {
-            const { nodeId, value } = res.data;
-            console.log(`Got response from ${peerKey}: node=${nodeId}, value=${value}`);
-            await insertTransaction(nodeId, value);
-            faultCounts.set(peerKey, 0);
-          } else {
-            const prev = faultCounts.get(peerKey) || 0;
-            const newCount = prev + 1;
-            faultCounts.set(peerKey, newCount);
-            console.warn(`No response from ${peerKey} (${res.reason}). fault=${newCount}`);
-            if (newCount >= MAX_FAULTS_BEFORE_ALERT) {
-              insertOFFStatus(node_id)
-              nodes = nodes.filter(n => n.node_id !== node_id)
-              faultCounts.delete(peerKey)
-            }
-          }
-          const end = performance.now();
-          let left = gap - (end - start);
-          if (left > 0)
-            await sleep(gap, false);
+      for (const node of [...nodes]) {
+        if (isPaused) {
+          console.log('Cycle paused, waiting...');
+          await pausePromise;
         }
-      } else {
-        for (const node of nodes) {
-          const { ip, port, node_id } = node;
-          testCounter ++;
-          let message = "";
-          if (testCounter === 9) {
-            message = Buffer.from('$#$112030!');
-            testCounter = 0;
-          } else {
-            message = Buffer.from('C:!');
-          }
-          server.send(message, port, ip, (err) => {
-            if (err) {
-              console.error(`Error sending ${message} to ${node_id}:`, err);
-            } else {
-              console.log(`Sent ${message} -> ${node_id}`);
-            }
-          });
-          await sleep(gap, false);
+
+        const socket = sockets.get(node.node_id);
+        if (!socket || socket.destroyed) {
+          await sleep(gap);
+          continue;
         }
+
+        const res = await sendAndAwaitResponse(node.node_id, socket, 'C:!');
+
+        if (res.success) {
+          const { nodeId, value } = res.data;
+          await insertTransaction(nodeId, value);
+          faultCounts.set(node.node_id, 0);
+        } else {
+          const prev = faultCounts.get(node.node_id) || 0;
+          const next = prev + 1;
+          faultCounts.set(node.node_id, next);
+          console.warn(`Node ${node.node_id} no response (${res.reason}). faults=${next}`);
+          if (next >= MAX_FAULTS_BEFORE_ALERT) {
+            await insertOFFStatus(node.node_id);
+            nodes = nodes.filter(n => n.node_id !== node.node_id);
+            faultCounts.delete(node.node_id);
+          }
+        }
+
+        await sleep(gap);
       }
     } catch (err) {
-      console.error('Error in cycleLoop:', err);
-      await sleep(5000, true);
+      console.error('cycleLoop error:', err);
+      await sleep(5000);
     }
   }
 }
+
+// ── Start ────────────────────────────────────────────────────────────────────
 
 async function start() {
   await initDb();
   await getNode();
 
-  server.on('error', (err) => {
-    console.error('Server error:', err);
-    server.close();
+  tcpServer.on('error', err => {
+    console.error('TCP server error:', err);
   });
 
-  server.bind(PORT, HOST, () => {
-    console.log(`UDP server listening on ${HOST}:${PORT}`);
+  tcpServer.listen(PORT, HOST, () => {
+    console.log(`TCP server listening on ${HOST}:${PORT}`);
   });
 
-  cycleLoop().catch(err => console.error('cycleLoop fatal error:', err));
+  cycleLoop().catch(err => console.error('cycleLoop fatal:', err));
 
   process.on('SIGINT', async () => {
     console.log('Shutting down...');
-    server.close();
+    tcpServer.close();
     if (db) await db.end();
     process.exit(0);
   });
 }
 
 start().catch(err => {
-  console.error('Failed to start server:', err);
+  console.error('Startup failed:', err);
   process.exit(1);
 });

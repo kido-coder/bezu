@@ -7,7 +7,8 @@
 
 # testing
 /coverage
-
+/migrate_passwords.js
+/test_tcp.js
 # production
 /build
 

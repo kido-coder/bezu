@@ -4,25 +4,19 @@ import { SidebarData } from './SidebarData';
 import { useEffect, useState } from "react";
 import { AdminSidebarData } from './AdminSidebarData';
 
-function Sidebar() {
-    const [userID, setUserID] = useState([]);
+const Sidebar = ({ user, className }) => {
+    const [role, setRole] = useState(null);
 
     useEffect(() => {
-        const loggedInUser = localStorage.getItem("authenticated");
-        if (loggedInUser) {
-            setUserID(localStorage.getItem("user"))
-        }
+        const storedRole = localStorage.getItem("type");
+        if (storedRole) setRole(Number(storedRole));
     }, []);
-    
+
     const filteredSidebarData = React.useMemo(() => {
-        if (userID.length > 0 && userID.includes('EN')) {
-            return SidebarData.filter((item) => item.title !== 'Хэрэглэгч');
-        } else if (userID.includes('AD')) {
-            return AdminSidebarData;
-        } else {
-            return SidebarData;
-        }
-    }, [userID]);
+        if (role === 3) return AdminSidebarData;
+        if (role === 1) return SidebarData.filter((item) => item.title !== 'Хэрэглэгч');
+        return SidebarData;
+    }, [role]);
 
     const handleLogout = async () => {
         await fetch(`${process.env.REACT_APP_API_URL}/logout`, { method: 'POST', credentials: 'include' });
@@ -31,7 +25,7 @@ function Sidebar() {
     };
 
     return (
-        <div className='Sidebar'>
+        <div className={className}>
             <div id='userSection'>
                 <img id="logo" src="/images/logo.png" alt="Logo" onClick={() => { window.location.pathname = '/home' }} />
             </div>

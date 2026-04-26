@@ -1,9 +1,7 @@
 import React, { useState } from 'react';
 import '../Style/Login.css';
-import { useNavigate } from 'react-router-dom';
 
 const Login = () => {
-  const navigate = useNavigate();
   const [username, setUsername] = useState('');
   const [password, setPassword] = useState('');
   const [message, setMessage] = useState('');
@@ -17,22 +15,6 @@ const Login = () => {
           console.error("Failed to decode JWT:", e);
           return null;
       }
-  };
-  const sendUDP = async () => {
-    const node_id = 1;
-    const command = 3;
-    try {
-      const res = await fetch(`${process.env.REACT_APP_API_URL}/send-udp`, {
-        method: 'POST',
-        headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ node_id, command }) // Example UDP message
-      });
-      const data = await res.json();
-      alert(data.message);
-    } catch (err) {
-      console.error(err);
-      alert('Failed to send UDP');
-    }
   };
 
   const handleSubmit = (event) => {
@@ -67,10 +49,11 @@ const Login = () => {
           localStorage.setItem("userDisplayName", decodedUsername);
 
           setMessage(data.message || `Амжилттай нэвтэрлээ, ${decodedUsername}!`);
-          if (userRole === 0) {
-              navigate("/dashboard");
+          // Full-page redirect so useAuth() re-reads the new token on arrival
+          if (userRole === 3) {
+              window.location.href = '/dashboard';
             } else {
-              navigate("/home");
+              window.location.href = '/home';
             }
         } else {
             setMessage(data.message || 'Нэвтрэх нэр эсвэл нууц үг буруу байна.');
@@ -122,7 +105,6 @@ const Login = () => {
           </button>
 
           <button
-            onClick={sendUDP}
             type="button"
             className="button forget"
           >

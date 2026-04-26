@@ -49,7 +49,7 @@ const View10 = ({ setting, handleInput, handleCheck, handleMode }) => (
             <input
                 type="text"
                 value={setting[2][2] ?? ""}
-                disabled
+                onChange={(e) => handleInput(e, 2, 2)}
             />
             <p>Сэлгэх хугацаа : </p>
             <input

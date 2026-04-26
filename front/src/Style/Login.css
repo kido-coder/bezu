@@ -1,85 +1,103 @@
 @import url('https://fonts.cdnfonts.com/css/scada');
 
 body {
-  font-size: 20px;
-  font-family: 14px 'Scada', sans-serif;
-  font-weight: 400;
+  font-family: 'Scada', sans-serif;
+  font-size: 16px;
 }
 
-.login{
-  margin: 0;
-}
+/* ── Outer wrapper ───────────────────────────────────────────────────────── */
 .background {
-  width: 70%;
-  background-color: white;
-  margin-left: 15%;
-  margin-top: 4%;
   display: flex;
-  justify-content: center;
-  font-family: 14px 'Scada', sans-serif;
+  align-items: stretch;
+  min-height: 100vh;
+  background-color: white;
 }
 
+/* ── Left panel (form) ───────────────────────────────────────────────────── */
 .loginform {
-  width: 50%;
-  height: 100%;
-  display: block;
-  text-align: center;
-  font-family: 14px 'Scada', sans-serif;
-
+  width: 45%;
+  min-width: 300px;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  padding: 2rem;
+  box-sizing: border-box;
 }
 
 .logo {
-  width: 30%;
-  margin-top: 30%;
+  width: 120px;
+  margin-bottom: 1rem;
+}
+
+/* ── Right panel (decorative image) ─────────────────────────────────────── */
+.background > img {
+  width: 55%;
+  object-fit: cover;
+  object-position: center;
+}
+
+/* ── Form elements ───────────────────────────────────────────────────────── */
+#login_form {
+  width: 100%;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  gap: 0.25rem;
 }
 
 .inp {
+  width: 80%;
+  max-width: 320px;
   background: white;
   border-radius: 5px;
   border: 1px rgba(188, 140, 160, 0.75) solid;
-  height: 2rem;
-  width: 60%;
+  height: 2.25rem;
   font: 14px 'Scada', sans-serif;
-  font-weight: 400;
-  padding: 5px;
-  margin: 0.5rem;
+  padding: 5px 10px;
+  box-sizing: border-box;
 }
 
 .button {
-  width: 28.5%;
-  height: 35px;
-  padding: 0.5rem;
-  margin: 0.5rem;
+  width: 40%;
+  max-width: 150px;
+  height: 36px;
+  margin: 0.4rem;
   border-radius: 5px;
   font: 14px 'Scada', sans-serif;
   font-weight: 400;
-  padding: 5px;
-  border: 0px;
-  justify-content: space-between;
-  display: inline;
-}
-
-.button:hover {
+  border: 0;
   cursor: pointer;
-  background-color: #45ADA8;
-}
-.button.login {
-  background-color: #B667AA;
-  color: white;
 }
 
-.button.forget {
-  background-color: #ece6e6;
-  color: #858484;
-}
-
-.button.add {
-  margin: 1rem;
-  font-size : 18px;
-  background-color: #45ADA8;
-}
+.button:hover    { background-color: #45ADA8; }
+.button.login    { background-color: #B667AA; color: white; }
+.button.forget   { background-color: #ece6e6; color: #858484; }
+.button.add      { margin: 1rem; font-size: 18px; background-color: #45ADA8; }
 
 .alert {
-  font-size: 14px;
-  color: rgb(190, 45, 20)
+  font-size: 13px;
+  color: rgb(190, 45, 20);
+  margin: 0.25rem 0;
+}
+
+/* ── Mobile ──────────────────────────────────────────────────────────────── */
+@media (max-width: 640px) {
+  .background {
+    flex-direction: column;
+  }
+
+  .loginform {
+    width: 100%;
+    padding: 2rem 1rem;
+  }
+
+  /* Hide the decorative image on small screens */
+  .background > img {
+    display: none;
+  }
+
+  .inp {
+    width: 90%;
+  }
 }

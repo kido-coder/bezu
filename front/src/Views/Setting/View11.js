@@ -48,6 +48,7 @@ const View11 = ({ setting, handleInput, handleCheck, handleMode }) => (
                         type="text"
                         value={setting[2][3] ?? ""}
                         onChange={(e) => handleInput(e, 2, 3)}
+                        disabled={!Boolean(setting[4][0] & 128)}
                     />
                     <p>[℃]</p>
                 </div>

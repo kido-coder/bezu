@@ -1,53 +1,52 @@
-import React, { useState, useEffect } from 'react'
-import '../Style/Header.css'
+import React, { useState, useEffect } from 'react';
+import '../Style/Header.css';
 
 function Header() {
     const [data, setData] = useState([{ num: 0 }, { num: 0 }]);
+
     useEffect(() => {
         const fetchData = async () => {
             try {
-                const responseNodes = await fetch(`${process.env.REACT_APP_API_URL}/header`, {
+                const res = await fetch(`${process.env.REACT_APP_API_URL}/header`, {
                     method: 'POST',
                     headers: { 'Content-Type': 'application/json' },
-                    credentials: 'include', 
-                    token: localStorage.getItem('authToken')
+                    credentials: 'include',   // sends the httpOnly cookie automatically
                 });
-
-                const dataNodes = await responseNodes.json();
-                if (JSON.stringify(data) !== JSON.stringify(dataNodes.data || [])) {
-                    setData(dataNodes.data || []);
-                }
-            } catch (error) {
-                console.error('Aldaa garchilaa shdeee :', error);
+                if (!res.ok) return;
+                const json = await res.json();
+                setData(json.data || []);
+            } catch (err) {
+                console.error('Header fetch error:', err);
             }
         };
+
         fetchData();
-        const intervalId = setInterval(fetchData, 100000);
-        return () => clearInterval(intervalId);
-    }, [data]);
+        const id = setInterval(fetchData, 60_000);   // refresh every 60 s
+        return () => clearInterval(id);
+    }, []);   // ← empty array: run once on mount, never re-subscribe
+
+    // Role is stored as the raw number (1 = Engineer, 2 = Dispatcher, 3 = Admin)
+    const role = Number(localStorage.getItem('type'));
 
     return (
-        <div id='header'>
-            <div id='info'>
-                {process.env.REACT_APP_T1 === localStorage.getItem("type") &&
+        <div id="header">
+            <div id="info">
+                {/* Admins see node count */}
+                {role === 3 && (
                     <div id="headerNode">
-                        <a href='/nodes'>Нийт зангилаа</a>
-                        {data.length > 0 && (
-                            <p>{data[0].num}</p>
-                        )}
+                        <a href="/nodes">Нийт зангилаа</a>
+                        <p>{data[0]?.num ?? 0}</p>
                     </div>
-                }
-                {process.env.REACT_APP_T2 === localStorage.getItem("type") &&
+                )}
+                {/* Admins see user count */}
+                {role === 3 && (
                     <div id="headerUser">
-                        <a href='/users'>Нийт хэрэглэгч</a>
-                        {data.length > 1 && (
-                            <p>{data[1].num}</p>
-                        )}
+                        <a href="/users">Нийт хэрэглэгч</a>
+                        <p>{data[1]?.num ?? 0}</p>
                     </div>
-                }
+                )}
             </div>
         </div>
-
     );
 }
 

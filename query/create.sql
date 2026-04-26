@@ -19,7 +19,7 @@ CREATE TABLE ajiltan (
     ajiltan_ner		VARCHAR(30)		NOT NULL,
     ajiltan_utas	VARCHAR(8)		NOT NULL,
     ajiltan_email	VARCHAR(50)		,
-    ajiltan_pass	VARCHAR(50)		DEFAULT '1234',
+    ajiltan_pass	VARCHAR(255)		DEFAULT '1234',
     ajiltan_turul	INT				DEFAULT 1,
     
     PRIMARY KEY (ajiltan_id),
@@ -45,38 +45,18 @@ CREATE TABLE state (
 
 CREATE TABLE node_log (
 	log_id			BIGINT			AUTO_INCREMENT		NOT NULL,
-    log_node		INT(5)		,
+    log_node		INT(5)		    ,
     log_date		DATETIME		,
-    log_state		VARCHAR(5)		,
-    log_t11			FLOAT 			,
-    log_t12			FLOAT 			,
-    log_t21			FLOAT 			,
-    log_t22			FLOAT 			,
-    log_t31			FLOAT 			,
-    log_t41			FLOAT 			,
-    log_t42			FLOAT 			,
-    log_p11			FLOAT 			,
-    log_p12			FLOAT 			,
-    log_p21			FLOAT 			,
-    log_p22			FLOAT 			,
-    log_p32			FLOAT 			,
-    log_p41			FLOAT 			,
-    log_p42			FLOAT 			,
-    log_p52			FLOAT 			,
-    log_sys_state	SMALLINT			,
-    log_nasos1		SMALLINT			,
-    log_nasos2		SMALLINT			,
-    log_nasos3		SMALLINT			,
-    log_us_state	SMALLINT			,
-    log_us_nasos1	SMALLINT			,
-    log_us_nasos2	SMALLINT			,
-    log_hs_state	SMALLINT			,
-    log_hs_nasos1	SMALLINT			,
-    log_hs_nasos2	SMALLINT			,
     
+    -- Command_HC
+    log_command_hc  VARCHAR(14)     ,
+    log_command_hw  VARCHAR(14)     ,
+    log_command_wc  VARCHAR(14)     ,
+
+    -- sensor values
+    log_sensor      VARCHAR(50)     ,
     PRIMARY KEY (log_id),
-    FOREIGN KEY (log_node) REFERENCES node(node_id) ON DELETE CASCADE,
-    FOREIGN KEY (log_state) REFERENCES state(state_id) ON DELETE SET NULL);
+    FOREIGN KEY (log_node) REFERENCES node(node_id) ON DELETE CASCADE);
 
 CREATE TABLE command (
 	command_id		VARCHAR(4)		NOT NULL,
